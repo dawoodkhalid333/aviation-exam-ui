@@ -1,397 +1,473 @@
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { sessionsAPI, submittedAnswersAPI } from "../../lib/api";
-import { Clock, Bookmark, Send, AlertCircle } from "lucide-react";
+import {
+  Clock,
+  Bookmark,
+  Send,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
+import { useState, useEffect } from "react";
+
+const formatTime = (seconds) => {
+  if (seconds === null || seconds === undefined) return "Untimed";
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
 
 export default function TakeExam() {
-  const { id: assignmentId } = useParams(); // ← This is the assignment ID, not exam ID
-  console.log(assignmentId);
-
   const navigate = useNavigate();
+  const { startRes } = useLocation().state || {};
 
-  const [session, setSession] = useState(null);
-  const [questions, setQuestions] = useState([]);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // { questionId: "A" | 42 }
-  const [bookmarked, setBookmarked] = useState({});
-  const [timeRemaining, setTimeRemaining] = useState(null); // seconds
-  const [isLoading, setIsLoading] = useState(true);
-  const progressKey = `exam-progress-${assignmentId}`;
+  const sessionId = startRes?.session?.id;
+  const exam = startRes?.session?.assignmentId?.examId;
 
-  // Start or resume session
-  const startOrResumeMutation = useMutation({
-    mutationFn: async () => {
-      const saved = localStorage.getItem(progressKey);
-      if (saved) {
-        const { sessionId } = JSON.parse(saved);
-        if (sessionId) {
-          return sessionsAPI.resume(sessionId);
-        }
-      }
-      return sessionsAPI.start({ assignmentId });
-    },
-    onSuccess: (res) => {
-      const data = res.data;
-      setSession(data.session);
-      setQuestions(data.session.assignmentId.examId.questions);
-      setCurrentQuestionIndex(data.currentQuestionIndex || 0);
-      setTimeRemaining(data.remainingTime);
-      setIsLoading(false);
+  // Current question state
+  const [currentQuestion, setCurrentQuestion] = useState(
+    startRes?.currentQuestion || null
+  );
+  const [currentIndex, setCurrentIndex] = useState(
+    startRes?.currentQuestionIndex ?? 0
+  );
+  const [answeredCount, setAnsweredCount] = useState(0);
+  const [currentGrade, setCurrentGrade] = useState(
+    startRes?.session?.grade || 0
+  );
+  const [showFeedback, setShowFeedback] = useState(null); // { isCorrect, message }
 
-      // Restore saved answers if resuming
-      if (data.answeredCount > 0) {
-        submittedAnswersAPI.getBySession(data.session.id).then((ansRes) => {
-          const savedAnswers = {};
-          ansRes.data.answers.forEach((a) => {
-            const val = a.submittedValue;
-            savedAnswers[a.questionId.id] =
-              typeof val === "string" ? val : Number(val);
-          });
-          setAnswers(savedAnswers);
+  // Form state
+  const [selectedOption, setSelectedOption] = useState("");
+  const [shortAnswer, setShortAnswer] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Time remaining query
+  const { data: timeRemaining } = useQuery({
+    queryKey: ["remaining-time", sessionId],
+    queryFn: () =>
+      sessionsAPI
+        .getRemainingTime(sessionId)
+        .then((res) => res.data.remainingTime),
+    refetchInterval: 1000,
+    enabled: !!sessionId && exam?.type === "timed",
+  });
+
+  const { data: lastSubmittedANswer } = useQuery({
+    queryKey: ["last-submitted", sessionId],
+    queryFn: () =>
+      submittedAnswersAPI.getLastBySession(sessionId).then((res) => {
+        const data = res.data;
+        setCurrentQuestion(data.nextQuestion);
+        setCurrentIndex(data.nextQuestionIndex);
+        setAnsweredCount(data.answeredCount);
+        return data;
+      }),
+    enabled: !!sessionId,
+    refetchOnWindowFocus: true,
+  });
+
+  console.log(lastSubmittedANswer);
+
+  const submitMutation = useMutation({
+    mutationFn: ({ questionId, submittedValue }) =>
+      submittedAnswersAPI.create({
+        sessionId,
+        questionId,
+        submittedValue,
+      }),
+    onSuccess: (response) => {
+      const data = response.data;
+
+      setCurrentGrade(data.currentGrade);
+      setAnsweredCount(data.answeredCount);
+
+      if (
+        data.isCorrect !== undefined &&
+        startRes?.session?.assignmentId?.isReviewAllowed
+      ) {
+        setShowFeedback({
+          isCorrect: data.isCorrect,
+          message: data.isCorrect
+            ? `+${currentQuestion.marks} marks`
+            : "Incorrect",
         });
       }
-    },
-    onSettled: () => setIsLoading(false),
-  });
 
-  // Save answer mutation
-  const saveAnswerMutation = useMutation({
-    mutationFn: ({ questionId, value }) =>
-      submittedAnswersAPI.create({
-        sessionId: session.id,
-        questionId,
-        submittedValue: value,
-      }),
-    onSuccess: (res) => {
-      const data = res.data;
-      if (data.isLastQuestion || data.examCompleted) {
-        localStorage.removeItem(progressKey);
-        navigate(`/student/results/${session.id}`);
+      // Show feedback briefly
+      setTimeout(() => setShowFeedback(null), 1500);
+
+      if (data.examCompleted || data.isLastQuestion) {
+        console.log("Exam completed");
+        navigate("/student/exams", { state: { completed: true } });
       } else if (data.nextQuestion) {
-        const nextIdx = questions.findIndex(
-          (q) => q.id === data.nextQuestion.id
-        );
-        if (nextIdx !== -1) setCurrentQuestionIndex(nextIdx);
+        // Move to next question
+        setCurrentQuestion(data.nextQuestion);
+        setCurrentIndex(data.nextQuestionIndex);
+        setSelectedOption("");
+        setShortAnswer("");
       }
+
+      setIsSubmitting(false);
+    },
+    onError: (err) => {
+      console.error(err);
+      alert("Failed to submit answer. Please try again.");
+      setIsSubmitting(false);
     },
   });
 
-  // Submit exam (only used for manual submit)
-  const submitMutation = useMutation({
-    mutationFn: () => sessionsAPI.submit(session.id),
-    onSuccess: () => {
-      localStorage.removeItem(progressKey);
-      navigate(`/student/results/${session.id}`);
-    },
-  });
+  const handleNext = () => {
+    if (!currentQuestion) return;
 
-  // Load session on mount
-  useEffect(() => {
-    startOrResumeMutation.mutate();
-  }, [assignmentId]);
+    let submittedValue;
 
-  // Timer
-  useEffect(() => {
-    if (timeRemaining === null || timeRemaining <= 0) return;
+    if (currentQuestion.type === "mcq") {
+      if (!selectedOption) {
+        alert("Please select an option");
+        return;
+      }
+      submittedValue = selectedOption;
+    } else if (currentQuestion.type === "short") {
+      const num = Number(shortAnswer);
+      if (isNaN(num) || !Number.isInteger(num) || shortAnswer.trim() === "") {
+        alert("Please enter a valid whole number");
+        return;
+      }
+      submittedValue = num;
+    }
 
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          submitMutation.mutate(); // Auto-submit when time runs out
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeRemaining, session]);
-
-  // Save progress to localStorage
-  useEffect(() => {
-    if (!session) return;
-    localStorage.setItem(
-      progressKey,
-      JSON.stringify({
-        sessionId: session.id,
-        answers,
-        bookmarked,
-        timeRemaining,
-      })
-    );
-  }, [answers, bookmarked, timeRemaining, session, progressKey]);
-
-  const handleAnswer = (questionId, value) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }));
-    saveAnswerMutation.mutate({ questionId, value });
+    setIsSubmitting(true);
+    submitMutation.mutate({
+      questionId: currentQuestion.id,
+      submittedValue,
+    });
   };
 
-  const handleBookmark = (questionId) => {
-    setBookmarked((prev) => ({ ...prev, [questionId]: !prev[questionId] }));
+  const handleSubmit = () => {
+    if (answeredCount < startRes?.totalQuestions) {
+      if (
+        !window.confirm("You haven't answered all questions. Submit exam now?")
+      ) {
+        return;
+      }
+    }
+    handleNext(); // This will trigger final submission
   };
 
-  const formatTime = (seconds) => {
-    if (seconds === null) return "Untimed";
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  };
+  // Auto-submit when time runs out
+  useEffect(() => {
+    if (
+      exam?.type === "timed" &&
+      timeRemaining !== undefined &&
+      timeRemaining <= 0
+    ) {
+      handleSubmit(); // Force submit if time ends
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeRemaining]);
 
-  if (isLoading || !session || questions.length === 0) {
+  // useEffect(()=>{
+
+  // },[lastSubmittedANswer])
+
+  if (!startRes || !currentQuestion) {
     return (
-      <div className="loading">
-        <div className="spinner"></div>
+      <div
+        className="container"
+        style={{ padding: "40px 20px", textAlign: "center" }}
+      >
+        <div className="card" style={{ maxWidth: 500, margin: "0 auto" }}>
+          <AlertCircle
+            size={48}
+            style={{ color: "#dc2626", margin: "0 auto 16px" }}
+          />
+          <h2>Invalid Exam Session</h2>
+          <p>You may have accessed this page incorrectly.</p>
+          <button
+            className="btn btn-primary mt-4"
+            onClick={() => navigate("/student")}
+          >
+            Go to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const answeredCount = Object.keys(answers).length;
-  const isTimed = session.assignmentId.examId.type === "timed";
+  const isTimed = exam?.type === "timed";
+  const totalQuestions = startRes?.totalQuestions;
 
   return (
-    <div style={{ display: "flex", gap: "24px", padding: "20px 0" }}>
+    <div
+      style={{
+        display: "flex",
+        gap: "24px",
+        padding: "20px 0",
+        minHeight: "100vh",
+      }}
+    >
       {/* Sidebar */}
       <aside
         style={{
-          width: "280px",
+          width: "300px",
           background: "white",
           borderRadius: "8px",
-          padding: "20px",
+          padding: "24px",
           boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
           height: "fit-content",
           position: "sticky",
           top: "20px",
         }}
       >
+        <h2
+          style={{ fontSize: "18px", fontWeight: "600", marginBottom: "24px" }}
+        >
+          {exam?.name}
+        </h2>
+
         <div className="mb-4">
-          <p className="text-sm text-gray">Progress</p>
-          <p style={{ fontSize: "20px", fontWeight: "700" }}>
-            {answeredCount} / {questions.length}
+          <p className="text-sm text-gray" style={{ marginBottom: "4px" }}>
+            Progress
           </p>
+          <p style={{ fontSize: "24px", fontWeight: "700" }}>
+            {answeredCount} / {totalQuestions}
+          </p>
+          <div
+            style={{
+              height: "8px",
+              background: "#e5e7eb",
+              borderRadius: "4px",
+              marginTop: "8px",
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                width: `${(answeredCount / totalQuestions) * 100}%`,
+                background: "#2563eb",
+                borderRadius: "4px",
+                transition: "width 0.4s ease",
+              }}
+            />
+          </div>
         </div>
 
         {isTimed && (
           <div className="mb-4">
-            <p className="text-sm text-gray">Time Remaining</p>
+            <p
+              className="text-sm text-gray"
+              style={{
+                marginBottom: "4px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <Clock size={16} /> Time Remaining
+            </p>
             <p
               style={{
-                fontSize: "28px",
+                fontSize: "32px",
                 fontWeight: "700",
                 color: timeRemaining < 300 ? "#dc2626" : "#1d4ed8",
               }}
             >
               {formatTime(timeRemaining)}
             </p>
+            {timeRemaining < 300 && timeRemaining > 0 && (
+              <p style={{ color: "#dc2626", fontSize: "14px" }}>
+                <AlertCircle
+                  size={16}
+                  style={{ display: "inline", marginRight: "4px" }}
+                />
+                Less than 5 minutes left!
+              </p>
+            )}
           </div>
         )}
 
-        <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
-          {questions.map((q, i) => {
-            const isAnswered = answers[q.id] !== undefined;
-            const isCurrent = i === currentQuestionIndex;
-            return (
-              <button
-                key={q.id}
-                onClick={() => setCurrentQuestionIndex(i)}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "12px",
-                  marginBottom: "8px",
-                  borderRadius: "6px",
-                  border: `2px solid ${isCurrent ? "#2563eb" : "#e5e7eb"}`,
-                  background: isAnswered
-                    ? isCurrent
-                      ? "#1d4ed8"
-                      : "#ecfdf5"
-                    : isCurrent
-                    ? "#eff6ff"
-                    : "white",
-                  color:
-                    isAnswered && !isCurrent
-                      ? "#065f46"
-                      : isCurrent
-                      ? isAnswered
-                        ? "white"
-                        : "#1d4ed8"
-                      : "#374151",
-                  fontWeight: "600",
-                }}
-              >
-                Q{i + 1} ({q.marks} marks)
-                {bookmarked[q.id] && (
-                  <Bookmark
-                    size={14}
-                    fill="currentColor"
-                    style={{ marginLeft: "6px" }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {startRes?.session?.assignmentId?.isReviewAllowed && (
+          <div style={{ marginTop: "32px" }}>
+            <p className="text-sm text-gray">Current Score</p>
+            <p
+              style={{ fontSize: "20px", fontWeight: "700", color: "#16a34a" }}
+            >
+              {currentGrade} marks
+            </p>
+          </div>
+        )}
+
+        <button
+          className="btn btn-success"
+          style={{ width: "100%", marginTop: "24px" }}
+          onClick={handleSubmit}
+          disabled={isSubmitting}
+        >
+          <Send size={16} />
+          Submit Exam
+        </button>
       </aside>
 
       {/* Main Content */}
-      <div style={{ flex: 1 }}>
-        <div className="card mb-4">
-          <div className="flex-between">
-            <div>
-              <h1 style={{ fontSize: "24px", fontWeight: "700" }}>
-                {session.assignmentId.examId.name}
-              </h1>
-              <p className="text-sm text-gray">
-                Question {currentQuestionIndex + 1} of {questions.length}
-              </p>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              {isTimed && (
-                <div style={{ marginBottom: "12px" }}>
-                  <Clock
-                    size={20}
-                    style={{ display: "inline", marginRight: "8px" }}
-                  />
-                  <span
-                    style={{
-                      fontSize: "22px",
-                      fontWeight: "700",
-                      color: timeRemaining < 300 ? "#dc2626" : "#1d4ed8",
-                    }}
-                  >
-                    {formatTime(timeRemaining)}
-                  </span>
-                </div>
-              )}
-              <button
-                className="btn btn-success"
-                onClick={() => submitMutation.mutate()}
-                disabled={submitMutation.isPending}
-              >
-                <Send size={18} />
-                Submit Exam
-              </button>
-            </div>
-          </div>
-        </div>
-
+      <main style={{ flex: 1 }}>
         <div className="card">
-          <div className="flex-between mb-4">
-            <div>
-              <h2 style={{ fontSize: "18px", fontWeight: "600" }}>
-                Question {currentQuestionIndex + 1}
-              </h2>
-              <p className="text-sm text-gray">{currentQuestion.marks} marks</p>
-            </div>
-            <button
-              className="btn btn-outline"
-              onClick={() => handleBookmark(currentQuestion.id)}
+          <div style={{ marginBottom: "24px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
             >
-              <Bookmark
-                size={18}
-                fill={bookmarked[currentQuestion.id] ? "currentColor" : "none"}
-              />
-            </button>
+              <h1 style={{ fontSize: "18px", fontWeight: "600" }}>
+                Question {currentIndex + 1} of {totalQuestions}
+              </h1>
+              <span className="badge badge-blue">
+                {currentQuestion.marks}{" "}
+                {currentQuestion.marks === 1 ? "mark" : "marks"}
+              </span>
+            </div>
           </div>
 
-          <p
-            style={{
-              fontSize: "16px",
-              lineHeight: "1.7",
-              marginBottom: "24px",
-            }}
-          >
-            {currentQuestion.text}
-          </p>
+          <div style={{ marginBottom: "32px" }}>
+            <p style={{ fontSize: "18px", lineHeight: "1.6" }}>
+              {currentQuestion.text}
+            </p>
+            {currentQuestion.difficulty && (
+              <span
+                className={`badge badge-${
+                  currentQuestion.difficulty === "easy"
+                    ? "green"
+                    : currentQuestion.difficulty === "medium"
+                    ? "yellow"
+                    : "red"
+                }`}
+                style={{ marginTop: "12px", display: "inline-block" }}
+              >
+                {currentQuestion.difficulty}
+              </span>
+            )}
+          </div>
 
-          {currentQuestion.questionType === "mcq" ? (
-            <div className="grid grid-2 gap-3">
-              {currentQuestion.options.map((opt, i) => (
+          {/* Answer Input */}
+          {currentQuestion.type === "mcq" ? (
+            <div>
+              {currentQuestion.options.map((opt, idx) => (
                 <label
-                  key={i}
+                  key={idx}
                   style={{
-                    padding: "16px",
-                    border: "2px solid",
-                    borderColor:
-                      answers[currentQuestion.id] === opt
-                        ? "#2563eb"
-                        : "#e5e7eb",
+                    display: "block",
+                    padding: "14px 16px",
+                    border: "1px solid #d1d5db",
                     borderRadius: "8px",
-                    background:
-                      answers[currentQuestion.id] === opt ? "#eff6ff" : "white",
+                    marginBottom: "12px",
                     cursor: "pointer",
+                    background:
+                      selectedOption === opt.text ? "#dbeafe" : "transparent",
+                    transition: "all 0.2s",
                   }}
+                  onClick={() => !isSubmitting && setSelectedOption(opt.text)}
                 >
                   <input
                     type="radio"
-                    name={currentQuestion.id}
-                    value={opt}
-                    checked={answers[currentQuestion.id] === opt}
-                    onChange={() => handleAnswer(currentQuestion.id, opt)}
+                    name="mcq"
+                    checked={selectedOption === opt.text}
+                    onChange={() => setSelectedOption(opt.text)}
                     style={{ marginRight: "12px" }}
+                    disabled={isSubmitting}
                   />
-                  {opt}
+                  {opt.text}
                 </label>
               ))}
             </div>
           ) : (
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div className="form-group">
+              <label className="label">Your Answer (whole number only)</label>
               <input
                 type="text"
                 className="input"
-                style={{ fontSize: "18px", padding: "16px" }}
-                placeholder="Enter number"
-                value={answers[currentQuestion.id] ?? ""}
-                onChange={(e) => {
-                  const num = e.target.value.replace(/[^\d.-]/g, "");
-                  handleAnswer(
-                    currentQuestion.id,
-                    num === "" ? null : Number(num)
-                  );
-                }}
-                inputMode="numeric"
+                style={{ fontSize: "18px", textAlign: "center" }}
+                value={shortAnswer}
+                onChange={(e) =>
+                  setShortAnswer(e.target.value.replace(/[^0-9]/g, ""))
+                }
+                placeholder="e.g. 42"
+                disabled={isSubmitting}
               />
-              {currentQuestion.unit && (
-                <span className="badge badge-gray">{currentQuestion.unit}</span>
-              )}
+              <p className="text-xs text-gray" style={{ marginTop: "8px" }}>
+                Enter a whole number (e.g., 123)
+              </p>
             </div>
           )}
 
-          <div className="flex-between mt-4">
-            <div className="flex gap-2">
-              <button
-                className="btn btn-outline"
-                onClick={() =>
-                  setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))
-                }
-                disabled={currentQuestionIndex === 0}
-              >
-                Previous
-              </button>
-              <button
-                className="btn btn-outline"
-                onClick={() =>
-                  setCurrentQuestionIndex(
-                    Math.min(questions.length - 1, currentQuestionIndex + 1)
-                  )
-                }
-                disabled={currentQuestionIndex === questions.length - 1}
-              >
-                Next
-              </button>
-            </div>
-            <div className="text-sm text-gray">
-              <AlertCircle
-                size={16}
-                color="#10b981"
-                style={{ marginRight: "6px" }}
-              />
-              Answers saved automatically
-            </div>
+          <div style={{ marginTop: "32px", textAlign: "right" }}>
+            <button
+              className="btn btn-primary"
+              onClick={handleNext}
+              disabled={
+                isSubmitting ||
+                (!selectedOption && currentQuestion.type === "mcq") ||
+                (currentQuestion.type === "short" && shortAnswer === "")
+              }
+            >
+              {isSubmitting ? (
+                <>Submitting...</>
+              ) : answeredCount + 1 === totalQuestions ? (
+                <>
+                  <Send size={16} /> Submit Final Answer
+                </>
+              ) : (
+                "Next Question"
+              )}
+            </button>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* Feedback Toast */}
+      {showFeedback && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "30px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: showFeedback.isCorrect ? "#16a34a" : "#dc2626",
+            color: "white",
+            padding: "16px 32px",
+            borderRadius: "8px",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            fontWeight: "600",
+            zIndex: 1000,
+            animation: "slideUp 0.4s ease",
+          }}
+        >
+          {showFeedback.isCorrect ? (
+            <CheckCircle size={24} />
+          ) : (
+            <XCircle size={24} />
+          )}
+          {showFeedback.message}
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes slideUp {
+          from {
+            transform: translateX(-50%) translateY(100px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }

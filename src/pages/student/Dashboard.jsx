@@ -16,10 +16,7 @@ export default function StudentDashboard() {
 
   const { data: sessions } = useQuery({
     queryKey: ["sessions", user.userId],
-    queryFn: () =>
-      sessionsAPI
-        .getAll({ studentId: user.userId })
-        .then((res) => res.data.sessions),
+    queryFn: () => sessionsAPI.getAll().then((res) => res.data.sessions),
   });
 
   const stats = [
@@ -31,13 +28,13 @@ export default function StudentDashboard() {
     },
     {
       title: "In Progress",
-      value: sessions?.sessions?.filter((s) => !s.isSubmitted).length || 0,
+      value: sessions?.filter((s) => !s.submittedAt).length || 0,
       icon: Clock,
       color: "#f59e0b",
     },
     {
       title: "Completed",
-      value: sessions?.sessions?.filter((s) => s.isSubmitted).length || 0,
+      value: sessions?.filter((s) => s.submittedAt).length || 0,
       icon: CheckCircle,
       color: "#10b981",
     },
@@ -110,9 +107,9 @@ export default function StudentDashboard() {
         >
           Recent Sessions
         </h2>
-        {sessions?.sessions?.slice(0, 5).map((session) => (
+        {sessions?.slice(0, 5)?.map((session) => (
           <div
-            key={session._id}
+            key={session.id}
             style={{
               padding: "16px",
               borderBottom: "1px solid #e5e7eb",
@@ -122,36 +119,36 @@ export default function StudentDashboard() {
             }}
           >
             <div>
-              <p style={{ fontWeight: "500", color: "#1f2937" }}>
+              {/* <p style={{ fontWeight: "500", color: "#1f2937" }}>
                 Attempt {session.attemptNumber}
-              </p>
+              </p> */}
               <p
                 style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}
               >
                 Started:{" "}
-                {format(new Date(session.startedAt), "MMM d, yyyy HH:mm")}
+                {format(new Date(session.createdAt), "MMM d, yyyy HH:mm")}
               </p>
             </div>
             <span
               className={`badge ${
-                session.isSubmitted ? "badge-green" : "badge-yellow"
+                session.submittedAt ? "badge-green" : "badge-yellow"
               }`}
               style={{ display: "block", marginLeft: "auto" }}
             >
-              {session.isSubmitted ? "Submitted" : "In Progress"}
+              {session.submittedAt ? "Submitted" : "In Progress"}
             </span>
-            {session?.isSubmitted && (
+            {session?.submittedAt && session?.assignmentId?.isReviewAllowed && (
               <span
                 className="badge badge-blue"
                 style={{ cursor: "pointer", marginLeft: "4px" }}
-                onClick={() => navigate(`results/${session?._id}`)}
+                onClick={() => navigate(`results/${session?.id}`)}
               >
                 Review
               </span>
             )}
           </div>
         ))}
-        {!sessions?.sessions?.length && (
+        {!sessions?.length && (
           <p style={{ textAlign: "center", color: "#6b7280", padding: "20px" }}>
             No exam sessions yet.{" "}
             <Link to="/student/exams" style={{ color: "#2563eb" }}>

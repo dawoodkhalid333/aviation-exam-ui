@@ -82,6 +82,8 @@ export const assignmentsAPI = {
 // Sessions API
 export const sessionsAPI = {
   getAll: () => api.get("/exam-sessions"),
+  getRemainingTime: (sessionId) =>
+    api.get(`/exam-sessions/remaining-time/${sessionId}`),
   getById: (sessionId) => api.get(`/exam-sessions/${sessionId}`),
   start: (assignmentId) => api.post("/exam-sessions/start", assignmentId),
   resume: (sessionId) => api.post(`/exam-sessions/resume/${sessionId}`),
@@ -96,11 +98,11 @@ export const submittedAnswersAPI = {
       questionId,
       submittedValue,
     }),
-
   getBySession: (sessionId) =>
     api.get(`/submitted-answers/session/${sessionId}`),
-
   getAll: () => api.get("/submitted-answers"),
+  getLastBySession: (sessionId) =>
+    api.get(`/submitted-answers/session/${sessionId}/last`),
 };
 
 // Grades

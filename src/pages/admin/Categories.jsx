@@ -9,9 +9,9 @@ export default function Categories() {
   const [name, setName] = useState("");
   const queryClient = useQueryClient();
 
-  const { data: categories, isLoading } = useQuery({
+  const { data: categoriesRes, isLoading } = useQuery({
     queryKey: ["categories"],
-    queryFn: () => categoriesAPI.getAll().then((res) => res.data.categories),
+    queryFn: () => categoriesAPI.getAll().then((res) => res.data),
   });
 
   const createMutation = useMutation({
@@ -97,7 +97,7 @@ export default function Categories() {
             </tr>
           </thead>
           <tbody>
-            {categories?.map((category) => (
+            {categoriesRes?.categories?.map((category) => (
               <tr key={category.id}>
                 <td style={{ fontWeight: "500" }}>{category.name}</td>
                 <td>{new Date(category.createdAt).toLocaleDateString()}</td>

@@ -50,7 +50,7 @@ function App() {
             )
           }
         />
-        <Route
+        {/* <Route
           path="/register"
           element={
             user ? (
@@ -59,7 +59,7 @@ function App() {
               <Register />
             )
           }
-        />
+        /> */}
 
         {/* Admin Routes */}
         <Route
@@ -73,14 +73,14 @@ function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="categories" element={<Categories />} />
           <Route path="questions" element={<Questions />} />
-          <Route path="questions/search" element={<QuestionSearch />} />
+          {/* <Route path="questions/search" element={<QuestionSearch />} /> */}
           <Route path="exams" element={<Exams />} />
           <Route path="exams/create" element={<CreateExam />} />
           <Route path="exams/:id" element={<ExamDetails />} />
           {/* <Route path="review" element={<ReviewControls />} /> */}
           <Route path="students" element={<Students />} />
           <Route path="students/:studentId" element={<StudentProfile />} />
-          <Route path="grades" element={<Grades />} />
+          {/* <Route path="grades" element={<Grades />} /> */}
           <Route path="grades/:sessionId" element={<SessionReview />} />
         </Route>
 
@@ -100,7 +100,7 @@ function App() {
         </Route>
 
         <Route
-          path="/"
+          path="*"
           element={
             <Navigate
               to={

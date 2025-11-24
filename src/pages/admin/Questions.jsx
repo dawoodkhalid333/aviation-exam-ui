@@ -20,12 +20,12 @@ export default function Questions() {
   // Fetch questions - now returns { questions: [...] } → we extract the array
   const { data: questions, isPending: questionsLoading } = useQuery({
     queryKey: ["questions"],
-    queryFn: () => questionsAPI.getAll().then((res) => res.data.questions),
+    queryFn: () => questionsAPI.getAll().then((res) => res.data),
   });
 
-  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+  const { data: categoriesRes, isLoading: categoriesLoading } = useQuery({
     queryKey: ["categories"],
-    queryFn: () => categoriesAPI.getAll().then((res) => res.data.categories),
+    queryFn: () => categoriesAPI.getAll().then((res) => res.data),
   });
 
   const createMutation = useMutation({
@@ -53,7 +53,7 @@ export default function Questions() {
 
   // Filtered questions based on new structure
   const filteredQuestions = useMemo(() => {
-    return questions?.filter((question) => {
+    return questions?.questions?.filter((question) => {
       const keywordMatch = filters.keyword
         ? question.text
             ?.toLowerCase()
@@ -86,10 +86,10 @@ export default function Questions() {
     setEditingQuestion(null);
   };
 
-  const handleEdit = (question) => {
-    setEditingQuestion(question);
-    setShowModal(true);
-  };
+  // const handleEdit = (question) => {
+  //   setEditingQuestion(question);
+  //   setShowModal(true);
+  // };
 
   const handleCreateOrUpdate = (payload) => {
     if (editingQuestion) {
@@ -107,7 +107,7 @@ export default function Questions() {
       marks: "all",
     });
 
-  if (questionsLoading || categoriesLoading) {
+  if (questionsLoading || categoriesLoading || !questions?.success) {
     return (
       <div className="loading">
         <div className="spinner"></div>
@@ -163,7 +163,7 @@ export default function Questions() {
               }
             >
               <option value="all">All Categories</option>
-              {categories.map((cat) => (
+              {categoriesRes?.categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
                 </option>
@@ -237,7 +237,11 @@ export default function Questions() {
                       </span>
                       <button
                         className="btn btn-outline"
-                        style={{ padding: "4px 10px", fontSize: "12px" }}
+                        style={{
+                          padding: "4px 10px",
+                          fontSize: "12px",
+                          minWidth: "74px",
+                        }}
                         onClick={() =>
                           setExpandedQuestion((prev) =>
                             prev === question.id ? null : question.id
@@ -277,13 +281,14 @@ export default function Questions() {
                   <td>{question.marks}</td>
                   <td>
                     <div className="flex gap-2">
-                      <button
+                      {/* <button
                         className="btn btn-outline"
                         style={{ padding: "6px 12px" }}
                         onClick={() => handleEdit(question)}
+                        disabled={categoriesLoading}
                       >
                         <Edit size={16} />
-                      </button>
+                      </button> */}
                       <button
                         className="btn btn-danger"
                         style={{ padding: "6px 12px" }}
@@ -382,7 +387,7 @@ export default function Questions() {
           isOpen={showModal}
           onClose={handleClose}
           initialData={editingQuestion}
-          categories={categories}
+          categories={categoriesRes?.categories}
           onSubmit={handleCreateOrUpdate}
           isSubmitting={createMutation.isPending || updateMutation.isPending}
         />

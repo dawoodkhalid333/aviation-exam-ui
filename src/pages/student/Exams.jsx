@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { assignmentsAPI } from "../../lib/api";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { assignmentsAPI, sessionsAPI } from "../../lib/api";
 import { PlayCircle, Clock, Calendar, AlertCircle } from "lucide-react";
 import { format, isPast, isFuture } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 // Safe date converter — handles both seconds and milliseconds
 const toDate = (timestamp) => {
@@ -12,11 +12,41 @@ const toDate = (timestamp) => {
 };
 
 export default function StudentExams() {
+  const navigate = useNavigate();
   const { data: myAssignments, isLoading } = useQuery({
     queryKey: ["assignments"],
     queryFn: () =>
       assignmentsAPI.getAll().then((res) => res.data.assignments || []),
   });
+
+  const startMutation = useMutation({
+    mutationFn: (assignmentId) => sessionsAPI.start({ assignmentId }),
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: (sessionId) => sessionsAPI.resume(sessionId),
+  });
+
+  const startExam = async (assignmentId) => {
+    try {
+      const response = await startMutation.mutateAsync(assignmentId);
+      const startRes = response.data;
+      navigate(`/student/exams/${assignmentId}/take`, { state: { startRes } });
+    } catch (error) {
+      console.error("Failed to start exam session:", error);
+    }
+  };
+  const resumeExam = async (session) => {
+    try {
+      const response = await resumeMutation.mutateAsync(session?.id);
+      const startRes = response.data;
+      navigate(`/student/exams/${session?.assignmentId}/take`, {
+        state: { startRes },
+      });
+    } catch (error) {
+      console.error("Failed to start exam session:", error);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -89,7 +119,7 @@ export default function StudentExams() {
                           style={{ display: "inline", marginRight: "4px" }}
                         />
                         {exam.type === "timed"
-                          ? `${exam.duration} mins`
+                          ? `${exam.duration / 60} mins`
                           : "Untimed"}
                       </span>
                       <span className="text-sm text-gray">
@@ -126,7 +156,8 @@ export default function StudentExams() {
 
                     <div className="mt-4 flex gap-2 flex-wrap">
                       <span className="badge badge-blue">
-                        Attempts: {attemptsLeft} / {assignment.allowedAttempts}
+                        Attempts Left: {attemptsLeft} /{" "}
+                        {assignment.allowedAttempts}
                       </span>
                       <span
                         className={`badge ${
@@ -166,14 +197,24 @@ export default function StudentExams() {
                     )}
 
                     {canStart && (
-                      <Link
-                        to={`/student/exams/${assignment.id}/take`}
+                      <button
                         className="btn btn-primary"
                         style={{ width: "100%", justifyContent: "center" }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (assignment?.sessionToResume?.id) {
+                            resumeExam(assignment?.sessionToResume);
+                          } else startExam(assignment.id);
+                        }}
+                        disabled={!canStart || startMutation.isPending}
                       >
                         <PlayCircle size={18} />
-                        Start Exam
-                      </Link>
+                        {startMutation.isPending
+                          ? "Starting..."
+                          : assignment?.sessionToResume?.id
+                          ? "Resume Exam"
+                          : "Start Exam"}
+                      </button>
                     )}
 
                     {!canStart &&

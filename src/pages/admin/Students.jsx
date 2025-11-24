@@ -16,12 +16,15 @@ export default function Students() {
 
   const queryClient = useQueryClient();
 
-  const { data: response, isLoading } = useQuery({
+  const { data: students, isLoading } = useQuery({
     queryKey: ["students"],
-    queryFn: () => usersAPI.getAll().then((res) => res.data),
+    queryFn: () =>
+      usersAPI
+        .getAll()
+        .then(
+          (res) => res.data?.users?.filter((u) => u.role === "student") || []
+        ),
   });
-
-  const students = response?.users?.filter((u) => u.role === "student") || [];
 
   const createMutation = useMutation({
     mutationFn: () =>

@@ -111,7 +111,7 @@ export default function StudentProfile() {
               {studentRes.email}
             </p>
           </div>
-          <button
+          {/* <button
             className="btn btn-outline"
             onClick={() => {
               queryClient.invalidateQueries({
@@ -123,7 +123,7 @@ export default function StudentProfile() {
           >
             <RefreshCw size={16} />
             Refresh Data
-          </button>
+          </button> */}
         </div>
 
         {/* Stats */}
@@ -332,19 +332,13 @@ export default function StudentProfile() {
                       </span>
                     </td>
                     <td>
-                      {session.startedAt
-                        ? format(
-                            new Date(session.startedAt * 1000),
-                            "MMM d, h:mm a"
-                          )
+                      {session.createdAt
+                        ? format(new Date(session.createdAt), "MMM d, h:mm a")
                         : "—"}
                     </td>
                     <td>
                       {session.submittedAt
-                        ? format(
-                            new Date(session.submittedAt * 1000),
-                            "MMM d, h:mm a"
-                          )
+                        ? format(new Date(session.submittedAt), "MMM d, h:mm a")
                         : "—"}
                     </td>
                     <td>

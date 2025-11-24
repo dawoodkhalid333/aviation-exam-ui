@@ -98,7 +98,7 @@ export default function QuestionFormModal({
   const isShortAnswer = formData.type === "short";
 
   const filledOptions = useMemo(
-    () => formData.options.filter((opt) => opt.trim()),
+    () => formData?.options?.filter((opt) => opt?.trim()),
     [formData.options]
   );
 

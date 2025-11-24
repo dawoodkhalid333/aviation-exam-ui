@@ -33,7 +33,12 @@ export default function ExamDetails() {
 
   const { data: studentsData } = useQuery({
     queryKey: ["students"],
-    queryFn: () => usersAPI.getAll().then((res) => res.data.users || []),
+    queryFn: () =>
+      usersAPI
+        .getAll()
+        .then((res) =>
+          (res.data.users || []).filter((user) => user.role === "student")
+        ),
   });
 
   const { data: assignmentsData, isLoading: assignmentsLoading } = useQuery({
@@ -185,7 +190,7 @@ export default function ExamDetails() {
             <p className="text-sm text-gray">Type</p>
             <p style={{ fontWeight: "600", marginTop: "4px" }}>
               {exam.type === "timed"
-                ? `Timed (${exam.duration} mins)`
+                ? `Timed (${exam.duration / 60} mins)`
                 : "Untimed"}
             </p>
           </div>
@@ -205,7 +210,7 @@ export default function ExamDetails() {
             <p className="text-sm text-gray">Default Expiry</p>
             <p style={{ fontWeight: "600", marginTop: "4px" }}>
               {exam.defaultExpiry} day{exam.defaultExpiry !== 1 ? "s" : ""}{" "}
-              after start
+              after open
             </p>
           </div>
           <div>

@@ -8,19 +8,19 @@ export default function AdminDashboard() {
     queryFn: () => usersAPI.getAll().then((res) => res.data),
   });
 
-  const { data: exams } = useQuery({
+  const { data: examsRes } = useQuery({
     queryKey: ["exams"],
     queryFn: () => examsAPI.getAll().then((res) => res.data),
   });
 
-  const { data: questions } = useQuery({
+  const { data: questionsRes } = useQuery({
     queryKey: ["questions"],
     queryFn: () => questionsAPI.getAll().then((res) => res.data),
   });
 
-  const { data: categories } = useQuery({
+  const { data: categoriesRes } = useQuery({
     queryKey: ["categories"],
-    queryFn: () => categoriesAPI.getAll().then((res) => res.data.categories),
+    queryFn: () => categoriesAPI.getAll().then((res) => res.data),
   });
 
   const stats = [
@@ -32,19 +32,19 @@ export default function AdminDashboard() {
     },
     {
       title: "Total Exams",
-      value: exams?.total || 0,
+      value: examsRes?.exams?.length || 0,
       icon: ClipboardList,
       color: "#8b5cf6",
     },
     {
       title: "Total Questions",
-      value: questions?.total || 0,
+      value: questionsRes?.questions?.length || 0,
       icon: FileQuestion,
       color: "#10b981",
     },
     {
       title: "Categories",
-      value: categories?.length || 0,
+      value: categoriesRes?.categories?.length || 0,
       icon: FolderOpen,
       color: "#f59e0b",
     },
@@ -119,7 +119,7 @@ export default function AdminDashboard() {
           >
             Recent Exams
           </h2>
-          {exams?.exams?.slice(0, 5).map((exam) => (
+          {examsRes?.exams?.slice(0, 5).map((exam) => (
             <div
               key={exam._id}
               style={{
@@ -148,10 +148,11 @@ export default function AdminDashboard() {
           >
             Question Distribution
           </h2>
-          {categories?.map((cat) => {
+          {categoriesRes?.categories?.map((cat) => {
             const count =
-              questions?.questions?.filter((q) => q.category === cat.name)
-                .length || 0;
+              questionsRes?.questions?.filter(
+                (q) => q.categoryId.name === cat.name
+              ).length || 0;
             return (
               <div
                 key={cat.id}

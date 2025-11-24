@@ -7,22 +7,18 @@ import { format } from "date-fns";
 export default function Exams() {
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isPending } = useQuery({
     queryKey: ["exams"],
-    queryFn: () => examsAPI.getAll().then((res) => res.data.exams || []),
+    queryFn: () => examsAPI.getAll().then((res) => res.data),
+    onSuccess: (data) => {
+      console.log("Fetched exams:", data);
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: examsAPI.delete,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["exams"] }),
   });
-
-  if (isLoading)
-    return (
-      <div className="loading">
-        <div className="spinner"></div>
-      </div>
-    );
 
   return (
     <div>
@@ -36,74 +32,82 @@ export default function Exams() {
         </Link>
       </div>
 
-      <div className="card">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Category</th>
-              <th>Type</th>
-              <th>Questions</th>
-              <th>Opens At</th>
-              <th>Closes At</th>
-              <th style={{ width: "140px" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data?.map((exam) => (
-              <tr key={exam.id}>
-                <td style={{ fontWeight: "500" }}>{exam.name}</td>
-                <td>{exam.categoryId?.name || "Uncategorized"}</td>
-                <td>
-                  <span
-                    className={`badge ${
-                      exam.type === "timed" ? "badge-blue" : "badge-gray"
-                    }`}
-                  >
-                    {exam.type}
-                  </span>
-                </td>
-                <td>{exam.questions?.length || 0}</td>
-                <td>
-                  {exam.opensAt
-                    ? format(new Date(exam.opensAt), "MMM d, yyyy h:mm a")
-                    : "-"}
-                </td>
-                <td>
-                  {exam.closesAt
-                    ? format(new Date(exam.closesAt), "MMM d, yyyy h:mm a")
-                    : "-"}
-                </td>
-                <td>
-                  <div className="flex gap-2">
-                    <Link
-                      to={`/admin/exams/${exam.id}`}
-                      className="btn btn-outline"
-                      style={{ padding: "6px 12px" }}
-                    >
-                      <Eye size={16} />
-                    </Link>
-                    <button
-                      className="btn btn-danger"
-                      style={{ padding: "6px 12px" }}
-                      onClick={() => {
-                        if (
-                          confirm(
-                            "Delete this exam? This action cannot be undone."
-                          )
-                        )
-                          deleteMutation.mutate(exam.id);
-                      }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
+      {isPending ? (
+        <div className="loading">
+          <div className="spinner"></div>
+        </div>
+      ) : data?.exams?.length && data?.success ? (
+        <div className="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Questions</th>
+                <th>Opens At</th>
+                <th>Closes At</th>
+                <th style={{ width: "140px" }}>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {data?.exams?.map((exam) => (
+                <tr key={exam.id}>
+                  <td style={{ fontWeight: "500" }}>{exam.name}</td>
+                  <td>{exam.categoryId?.name || "Uncategorized"}</td>
+                  <td>
+                    <span
+                      className={`badge ${
+                        exam.type === "timed" ? "badge-blue" : "badge-gray"
+                      }`}
+                    >
+                      {exam.type}
+                    </span>
+                  </td>
+                  <td>{exam.questions?.length || 0}</td>
+                  <td>
+                    {exam.opensAt
+                      ? format(new Date(exam.opensAt), "MMM d, yyyy h:mm a")
+                      : "-"}
+                  </td>
+                  <td>
+                    {exam.closesAt
+                      ? format(new Date(exam.closesAt), "MMM d, yyyy h:mm a")
+                      : "-"}
+                  </td>
+                  <td>
+                    <div className="flex gap-2">
+                      <Link
+                        to={`/admin/exams/${exam.id}`}
+                        className="btn btn-outline"
+                        style={{ padding: "6px 12px" }}
+                      >
+                        <Eye size={16} />
+                      </Link>
+                      <button
+                        className="btn btn-danger"
+                        style={{ padding: "6px 12px" }}
+                        onClick={() => {
+                          if (
+                            confirm(
+                              "Delete this exam? This action cannot be undone."
+                            )
+                          )
+                            deleteMutation.mutate(exam.id);
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        "No exams found."
+      )}
     </div>
   );
 }

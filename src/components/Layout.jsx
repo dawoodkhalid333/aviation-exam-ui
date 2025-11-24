@@ -33,7 +33,7 @@ export default function Layout() {
     { to: "/admin/exams", icon: ClipboardList, label: "Exams" },
     // { to: "/admin/review", icon: Shield, label: "Review Settings" },
     { to: "/admin/students", icon: Users, label: "Students" },
-    { to: "/admin/grades", icon: Award, label: "Grades" },
+    // { to: "/admin/grades", icon: Award, label: "Grades" },
   ];
 
   const studentNavItems = [
