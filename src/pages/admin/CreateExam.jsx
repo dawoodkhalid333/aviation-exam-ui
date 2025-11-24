@@ -37,19 +37,20 @@ export default function CreateExam() {
 
   const [questionFilters, setQuestionFilters] = useState(initialFilters);
 
-  const { data: categories = [] } = useQuery({
+  const { data: categoriesRes = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: () =>
-      categoriesAPI.getAll().then((res) => res.data.categories || []),
+    queryFn: () => categoriesAPI.getAll().then((res) => res.data || []),
   });
 
-  const { data: questionBank, isLoading: questionsLoading } = useQuery({
+  const { data: questionBankRes, isLoading: questionsLoading } = useQuery({
     queryKey: ["questions"],
-    queryFn: () =>
-      questionsAPI.getAll().then((res) => res.data.questions || []),
+    queryFn: () => questionsAPI.getAll().then((res) => res.data || []),
   });
 
-  const availableQuestions = useMemo(() => questionBank || [], [questionBank]);
+  const availableQuestions = useMemo(
+    () => questionBankRes?.questions || [],
+    [questionBankRes]
+  );
 
   const createMutation = useMutation({
     mutationFn: examsAPI.create,
@@ -265,7 +266,7 @@ export default function CreateExam() {
                 required
               >
                 <option value="">Select category</option>
-                {categories.map((cat) => (
+                {categoriesRes?.categories?.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
                   </option>
@@ -426,7 +427,7 @@ export default function CreateExam() {
                 }
               >
                 <option value="all">All Categories</option>
-                {categories.map((cat) => (
+                {categoriesRes?.categories?.map((cat) => (
                   <option key={cat.id} value={cat.name}>
                     {cat.name}
                   </option>
