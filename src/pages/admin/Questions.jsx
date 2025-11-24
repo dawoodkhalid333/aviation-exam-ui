@@ -107,7 +107,12 @@ export default function Questions() {
       marks: "all",
     });
 
-  if (questionsLoading || categoriesLoading || !questions?.success) {
+  if (
+    questionsLoading ||
+    categoriesLoading ||
+    !questions?.success ||
+    !categoriesRes?.success
+  ) {
     return (
       <div className="loading">
         <div className="spinner"></div>

@@ -121,11 +121,11 @@ export default function AdminDashboard() {
           </h2>
           {examsRes?.exams?.slice(0, 5).map((exam) => (
             <div
-              key={exam._id}
+              key={exam.id}
               style={{
                 padding: "12px",
                 borderBottom: "1px solid #e5e7eb",
-                ":last-child": { borderBottom: "none" },
+                ":lastChild": { borderBottom: "none" },
               }}
             >
               <p style={{ fontWeight: "500", color: "#1f2937" }}>{exam.name}</p>

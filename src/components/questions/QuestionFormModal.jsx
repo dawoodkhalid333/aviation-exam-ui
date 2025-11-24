@@ -1,11 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
-
-const defaultShortAnswer = {
-  value: "",
-  plus: 0,
-  minus: 0,
-  unit: "",
-};
+import { useState } from "react";
 
 const getDefaultFormState = () => ({
   type: "mcq",
@@ -15,92 +8,35 @@ const getDefaultFormState = () => ({
   difficulty: "medium",
   feedback: "",
   options: ["", "", "", ""],
-  correctAnswer: {
-    mcq: [],
-    short: { ...defaultShortAnswer },
-  },
+  correctAnswer: "",
   plusT: 0,
   minusT: 0,
 });
 
-const sanitizeShortAnswer = (shortAnswer) => {
-  if (!shortAnswer) return { ...defaultShortAnswer };
-  return {
-    value:
-      shortAnswer.value === 0 || shortAnswer.value
-        ? Math.round(Number(shortAnswer.value))
-        : "",
-    plus:
-      shortAnswer.plus === 0 || shortAnswer.plus
-        ? Math.round(Number(shortAnswer.plus))
-        : 0,
-    minus:
-      shortAnswer.minus === 0 || shortAnswer.minus
-        ? Math.round(Number(shortAnswer.minus))
-        : 0,
-    unit: shortAnswer.unit || "",
-  };
-};
-
-const buildFormStateFromInitial = (initialData) => {
-  if (!initialData) {
-    return getDefaultFormState();
-  }
-
-  // Handle options – ensure at least 4
-  const baseOptions =
-    initialData.options && initialData.options.length >= 4
-      ? initialData.options
-      : [
-          ...(initialData.options || []),
-          ...Array(Math.max(0, 4 - (initialData.options?.length || 0))).fill(
-            ""
-          ),
-        ];
-
-  return {
-    type: initialData.type || "mcq",
-    categoryId: initialData.categoryId?.id || initialData.categoryId || "",
-    text: initialData.text || "",
-    marks: initialData.marks || 1,
-    difficulty: initialData.difficulty || "medium",
-    feedback: initialData.feedback || "",
-    options: baseOptions,
-    correctAnswer: {
-      mcq: initialData.correctAnswer?.mcq || [],
-      short: sanitizeShortAnswer(initialData.correctAnswer?.short),
-    },
-    plusT: initialData.plusT ?? 0,
-    minusT: initialData.minusT ?? 0,
-  };
-};
-
 export default function QuestionFormModal({
   isOpen,
   onClose,
-  initialData,
   categories = [],
   onSubmit,
-  isSubmitting,
+  isSubmitting = false,
 }) {
-  const [formData, setFormData] = useState(() =>
-    buildFormStateFromInitial(initialData)
-  );
-
-  // Reset form when initialData changes (e.g., editing a new question)
-  useEffect(() => {
-    if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setFormData(buildFormStateFromInitial(initialData));
-    }
-  }, [initialData, isOpen]);
-
+  const [formData, setFormData] = useState({
+    type: "mcq",
+    categoryId: "",
+    text: "",
+    marks: 1,
+    difficulty: "medium",
+    feedback: "",
+    options: ["", "", "", ""],
+    correctAnswer: "",
+    plusT: 0,
+    minusT: 0,
+  });
   const isShortAnswer = formData.type === "short";
 
-  const filledOptions = useMemo(
-    () => formData?.options?.filter((opt) => opt?.trim()),
-    [formData.options]
-  );
+  if (!isOpen) return null;
+
+  const filledOptions = formData.options.filter((opt) => opt.trim() !== "");
 
   const handleOptionChange = (value, index) => {
     const updated = [...formData.options];
@@ -108,105 +44,99 @@ export default function QuestionFormModal({
     setFormData((prev) => ({ ...prev, options: updated }));
   };
 
-  const toggleCorrectMcq = (optionText) => {
-    setFormData((prev) => {
-      const current = prev.correctAnswer.mcq || [];
-      return {
-        ...prev,
-        correctAnswer: {
-          ...prev.correctAnswer,
-          mcq: current.includes(optionText)
-            ? current.filter((t) => t !== optionText)
-            : [...current.concat(optionText)],
-        },
-      };
-    });
+  const addOption = () => {
+    setFormData((prev) => ({ ...prev, options: [...prev.options, ""] }));
   };
 
-  const updateShortAnswer = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      correctAnswer: {
-        ...prev.correctAnswer,
-        short: {
-          ...prev.correctAnswer.short,
-          [field]:
-            value === ""
-              ? ""
-              : field === "unit"
-              ? value
-              : Math.max(0, Math.round(Number(value) || 0)),
-        },
-      },
-    }));
+  const removeOption = (index) => {
+    setFormData((prev) => {
+      const updated = prev.options.filter((_, i) => i !== index);
+      const removed = prev.options[index];
+      return {
+        ...prev,
+        options: updated,
+        correctAnswer: prev.correctAnswer === removed ? "" : prev.correctAnswer,
+      };
+    });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    // Validation
+    if (!formData.categoryId) {
+      alert("Please select a category.");
+      return;
+    }
+    if (!formData.text.trim()) {
+      alert("Please enter the question text.");
+      return;
+    }
+
+    if (formData.type === "mcq") {
+      if (filledOptions.length < 2) {
+        alert("Please provide at least 2 answer options.");
+        return;
+      }
+      if (!formData.correctAnswer.trim()) {
+        alert("Please select the correct answer.");
+        return;
+      }
+    }
+
+    if (isShortAnswer) {
+      if (formData.correctAnswer === "" || formData.correctAnswer < 0) {
+        alert("Please enter a valid numeric answer.");
+        return;
+      }
+    }
+
     const payload = {
-      text: formData.text.trim(),
-      categoryId: formData.categoryId,
       type: formData.type,
-      marks: Math.min(5, Math.max(1, Number(formData.marks) || 1)),
+      categoryId: formData.categoryId,
+      text: formData.text.trim(),
+      marks: Math.max(1, Math.min(5, Number(formData.marks) || 1)),
       difficulty: formData.difficulty,
       feedback: formData.feedback.trim() || null,
-      correctAnswer:
-        formData.type === "mcq"
-          ? { mcq: formData.correctAnswer.mcq, short: null }
-          : {
-              mcq: null,
-              short: sanitizeShortAnswer(formData.correctAnswer.short),
-            },
-      options:
-        formData.type === "mcq" ? filledOptions.map((o) => ({ text: o })) : [],
-      plusT: isShortAnswer
-        ? Number(formData.correctAnswer.short.plus)
-        : undefined,
-      minusT: isShortAnswer
-        ? Number(formData.correctAnswer.short.minus)
-        : undefined,
+      correctAnswer: isShortAnswer
+        ? Number(formData.correctAnswer)
+        : formData.correctAnswer,
+      options: isShortAnswer ? [] : filledOptions.map((text) => ({ text })),
+      ...(isShortAnswer && {
+        plusT: Number(formData.plusT) || 0,
+        minusT: Number(formData.minusT) || 0,
+      }),
     };
-
-    // Clean up undefined fields
-    if (!isShortAnswer) {
-      delete payload.plusT;
-      delete payload.minusT;
-    }
 
     onSubmit(payload);
   };
 
-  if (!isOpen) return null;
-
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ fontSize: "20px", fontWeight: 600, marginBottom: "20px" }}>
-          {initialData ? "Edit Question" : "Add New Question"}
+      <div className="modal card" onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ fontSize: "20px", fontWeight: 600, marginBottom: "24px" }}>
+          Add New Question
         </h2>
 
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-2 gap-4">
+          <div className="grid grid-2 gap-4 mb-4">
             <div className="form-group">
               <label className="label">Question Type</label>
               <select
                 className="input"
                 value={formData.type}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    type: e.target.value,
-                    // Reset type-specific fields
-                    correctAnswer:
-                      e.target.value === "mcq"
-                        ? { mcq: [], short: null }
-                        : { mcq: null, short: { ...defaultShortAnswer } },
-                    options: e.target.value === "mcq" ? ["", "", "", ""] : [],
-                  }))
-                }
+                onChange={(e) => {
+                  const newType = e.target.value;
+                  setFormData({
+                    ...getDefaultFormState(),
+                    type: newType,
+                    categoryId: formData.categoryId,
+                    marks: formData.marks,
+                    difficulty: formData.difficulty,
+                  });
+                }}
               >
-                <option value="mcq">Multiple Choice</option>
+                <option value="mcq">Multiple Choice (Single Answer)</option>
                 <option value="short">Short Answer (Numeric)</option>
               </select>
             </div>
@@ -251,73 +181,113 @@ export default function QuestionFormModal({
           {/* MCQ Options */}
           {formData.type === "mcq" && (
             <div className="form-group">
-              <label className="label">
-                Answer Options (at least 2 required)
-              </label>
-              {formData.options.map((option, index) => (
-                <div
-                  key={index}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    marginBottom: "10px",
-                  }}
-                >
-                  <span style={{ minWidth: "20px", fontWeight: 600 }}>
-                    {String.fromCharCode(65 + index)}.
+              <div className="flex-between mb-4">
+                <label className="label">
+                  Answer Options
+                  <span className="text-xs text-gray ml-2">
+                    (at least 2 required)
                   </span>
-                  <input
-                    type="text"
-                    className="input flex-1"
-                    placeholder={`Option ${index + 1}`}
-                    value={option}
-                    onChange={(e) => handleOptionChange(e.target.value, index)}
-                  />
-                  <label style={{ whiteSpace: "nowrap", fontSize: "13px" }}>
+                </label>
+                <button
+                  type="button"
+                  onClick={addOption}
+                  className="btn btn-primary"
+                  style={{ padding: "6px 12px", fontSize: "13px" }}
+                >
+                  + Add Option
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {formData.options.map((option, index) => (
+                  <div
+                    key={index}
+                    className="flex gap-4 items-center p-3 border rounded"
+                    style={{ background: "#f9fafb", borderColor: "#e5e7eb" }}
+                  >
+                    <span
+                      className="badge badge-blue"
+                      style={{ width: "32px", textAlign: "center" }}
+                    >
+                      {String.fromCharCode(65 + index)}
+                    </span>
+
                     <input
-                      type="checkbox"
-                      checked={formData.correctAnswer.mcq?.includes(option)}
-                      disabled={!option.trim()}
-                      onChange={() => toggleCorrectMcq(option)}
-                    />{" "}
-                    Correct
-                  </label>
-                </div>
-              ))}
+                      type="text"
+                      className="input flex-1"
+                      placeholder={`Option ${index + 1}`}
+                      value={option}
+                      onChange={(e) =>
+                        handleOptionChange(e.target.value, index)
+                      }
+                    />
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="correct"
+                        checked={formData.correctAnswer === option}
+                        disabled={!option.trim()}
+                        onChange={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            correctAnswer: option,
+                          }))
+                        }
+                      />
+                      <span className="text-sm">Correct</span>
+                    </label>
+
+                    {formData.options.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => removeOption(index)}
+                        className="text-red-600 hover:bg-red-50 rounded px-2"
+                        style={{ width: "32px", height: "32px" }}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
               {filledOptions.length < 2 && (
-                <p className="text-xs text-red-600">
-                  Please fill at least 2 options and mark correct answer(s).
+                <p className="error-text mt-2">
+                  Please add at least 2 options and select one correct answer.
                 </p>
               )}
             </div>
           )}
 
-          {/* Short Answer Config */}
+          {/* Short Answer */}
           {isShortAnswer && (
-            <div className="card p-4 mb-5 bg-gray-50">
-              <p className="font-semibold mb-3">Short Answer Settings</p>
+            <div
+              className="card"
+              style={{ background: "#f9fafb", border: "1px solid #e5e7eb" }}
+            >
+              <p className="label mb-4">Numeric Answer Settings</p>
               <div className="grid grid-2 gap-4">
                 <div className="form-group">
-                  <label className="label">Correct Value (number) *</label>
+                  <label className="label">
+                    Correct Answer (whole number) *
+                  </label>
                   <input
                     type="number"
                     className="input"
-                    value={formData.correctAnswer.short?.value ?? ""}
-                    onChange={(e) => updateShortAnswer("value", e.target.value)}
-                    required
                     min="0"
                     step="1"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="label">Unit (optional)</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="e.g., kg, m/s, °C"
-                    value={formData.correctAnswer.short?.unit || ""}
-                    onChange={(e) => updateShortAnswer("unit", e.target.value)}
+                    value={formData.correctAnswer}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        correctAnswer:
+                          e.target.value === ""
+                            ? ""
+                            : Math.max(0, Math.round(Number(e.target.value))),
+                      }))
+                    }
+                    required
                   />
                 </div>
                 <div className="form-group">
@@ -327,8 +297,16 @@ export default function QuestionFormModal({
                     className="input"
                     min="0"
                     step="1"
-                    value={formData.correctAnswer.short?.plus ?? 0}
-                    onChange={(e) => updateShortAnswer("plus", e.target.value)}
+                    value={formData.plusT}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        plusT: Math.max(
+                          0,
+                          Math.round(Number(e.target.value) || 0)
+                        ),
+                      }))
+                    }
                   />
                 </div>
                 <div className="form-group">
@@ -338,19 +316,26 @@ export default function QuestionFormModal({
                     className="input"
                     min="0"
                     step="1"
-                    value={formData.correctAnswer.short?.minus ?? 0}
-                    onChange={(e) => updateShortAnswer("minus", e.target.value)}
+                    value={formData.minusT}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        minusT: Math.max(
+                          0,
+                          Math.round(Number(e.target.value) || 0)
+                        ),
+                      }))
+                    }
                   />
                 </div>
               </div>
-              <p className="text-xs text-gray-600 mt-3">
-                Students must enter a whole number. Answers within ± tolerance
-                are auto-accepted.
+              <p className="text-xs text-gray mt-3">
+                Answers within ± tolerance will be accepted as correct.
               </p>
             </div>
           )}
 
-          <div className="grid grid-2 gap-4">
+          <div className="grid grid-2 gap-4 mt-4">
             <div className="form-group">
               <label className="label">Marks (1–5)</label>
               <input
@@ -368,7 +353,6 @@ export default function QuestionFormModal({
                     ),
                   }))
                 }
-                required
               />
             </div>
             <div className="form-group">
@@ -395,7 +379,7 @@ export default function QuestionFormModal({
             <textarea
               className="input"
               rows="3"
-              placeholder="Shown to students after attempting the question..."
+              placeholder="Shown after submission..."
               value={formData.feedback}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, feedback: e.target.value }))
@@ -403,20 +387,17 @@ export default function QuestionFormModal({
             />
           </div>
 
-          <div className="flex gap-3 mt-6">
+          <div className="flex gap-4 mt-6">
             <button
               type="submit"
               className="btn btn-primary"
               disabled={
                 isSubmitting ||
-                (formData.type === "mcq" && filledOptions.length < 2)
+                (formData.type === "mcq" &&
+                  (filledOptions.length < 2 || !formData.correctAnswer))
               }
             >
-              {isSubmitting
-                ? "Saving..."
-                : initialData
-                ? "Update Question"
-                : "Create Question"}
+              {isSubmitting ? "Creating..." : "Create Question"}
             </button>
             <button
               type="button"
