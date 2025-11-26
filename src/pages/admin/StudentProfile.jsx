@@ -1,40 +1,52 @@
 import { useParams, Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { usersAPI, assignmentsAPI, sessionsAPI } from "../../lib/api";
-import { ArrowLeft, Shield, RefreshCw, Plus, Minus, Ban } from "lucide-react";
+import {
+  ArrowLeft,
+  Shield,
+  RefreshCw,
+  Plus,
+  Minus,
+  Ban,
+  User,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Eye,
+  EyeOff,
+  Mail,
+} from "lucide-react";
 import { format } from "date-fns";
 
 export default function StudentProfile() {
   const { studentId } = useParams();
   const queryClient = useQueryClient();
 
-  // Fetch Student
-  const { data: studentRes, isLoading: studentLoading } = useQuery({
+  const { data: student, isLoading: studentLoading } = useQuery({
     queryKey: ["student", studentId],
     queryFn: () => usersAPI.getById(studentId).then((res) => res.data.user),
-    enabled: Boolean(studentId),
+    enabled: !!studentId,
   });
 
-  // Fetch All Assignments (no query params anymore)
-  const { data: allAssignmentsRes } = useQuery({
+  const { data: allAssignments = [] } = useQuery({
     queryKey: ["assignments"],
     queryFn: () =>
       assignmentsAPI.getAll().then((res) => res.data.assignments || []),
   });
 
-  // Fetch All Sessions
-  const { data: allSessionsRes } = useQuery({
+  const { data: allSessions = [] } = useQuery({
     queryKey: ["sessions"],
     queryFn: () => sessionsAPI.getAll().then((res) => res.data.sessions || []),
   });
 
-  const studentAssignments = allAssignmentsRes
-    ? allAssignmentsRes.filter((a) => a.studentId.id === studentId)
-    : [];
+  const studentAssignments = allAssignments.filter(
+    (a) => a.studentId?.id === studentId
+  );
 
-  const studentSessions = allSessionsRes
-    ? allSessionsRes.filter((s) => s.assignmentId?.studentId?.id === studentId)
-    : [];
+  const studentSessions = allSessions.filter(
+    (s) => s.assignmentId?.studentId?.id === studentId
+  );
 
   const updateAssignment = useMutation({
     mutationFn: ({ assignmentId, data }) =>
@@ -54,7 +66,7 @@ export default function StudentProfile() {
   });
 
   const handleAdjustAttempts = (assignment, delta) => {
-    const newAttempts = Math.max(1, assignment.allowedAttempts + delta);
+    const newAttempts = Math.max(1, (assignment.allowedAttempts || 1) + delta);
     updateAssignment.mutate({
       assignmentId: assignment.id,
       data: { allowedAttempts: newAttempts },
@@ -70,16 +82,19 @@ export default function StudentProfile() {
 
   if (studentLoading) {
     return (
-      <div className="loading">
-        <div className="spinner"></div>
+      <div className="flex items-center justify-center h-96">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  if (!studentRes) {
+  if (!student) {
     return (
-      <div className="container" style={{ padding: "40px" }}>
-        <p className="error-text">Student not found.</p>
+      <div className="text-center py-20">
+        <User size={72} className="mx-auto text-gray-300 mb-6" />
+        <h3 className="text-2xl font-semibold text-gray-700">
+          Student not found
+        </h3>
       </div>
     );
   }
@@ -88,286 +103,288 @@ export default function StudentProfile() {
   const inProgressCount = studentSessions.length - completedCount;
 
   return (
-    <div
-      className="container"
-      style={{ paddingTop: "24px", paddingBottom: "40px" }}
-    >
+    <div className="space-y-8">
       {/* Back Button */}
-      <Link to="/admin/students" className="btn btn-outline mb-4">
-        <ArrowLeft size={18} />
+      <Link
+        to="/admin/students"
+        className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium hover:underline"
+      >
+        <ArrowLeft size={20} />
         Back to Students
       </Link>
 
       {/* Student Header */}
-      <div className="card mb-4">
-        <div className="flex-between">
-          <div>
-            <h1
-              style={{ fontSize: "28px", fontWeight: "700", color: "#1f2937" }}
-            >
-              {studentRes.name}
-            </h1>
-            <p style={{ color: "#6b7280", marginTop: "4px" }}>
-              {studentRes.email}
-            </p>
+      <div className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-xl p-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div className="flex items-center gap-6">
+            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-2xl">
+              {student.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold text-gray-800">
+                {student.name}
+              </h1>
+              <p className="text-xl text-gray-600 mt-2 flex items-center gap-2">
+                <Mail size={18} className="text-gray-500" />
+                {student.email}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Joined {format(new Date(student.createdAt), "MMMM d, yyyy")}
+              </p>
+            </div>
           </div>
-          {/* <button
-            className="btn btn-outline"
-            onClick={() => {
-              queryClient.invalidateQueries({
-                queryKey: ["student", studentId],
-              });
-              queryClient.invalidateQueries({ queryKey: ["assignments"] });
-              queryClient.invalidateQueries({ queryKey: ["sessions"] });
-            }}
-          >
-            <RefreshCw size={16} />
-            Refresh Data
-          </button> */}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-3 gap-4" style={{ marginTop: "24px" }}>
-          <div
-            className="card"
-            style={{ background: "#f0f9ff", padding: "16px" }}
-          >
-            <p className="text-sm text-gray">Assigned Exams</p>
-            <p
-              style={{ fontSize: "32px", fontWeight: "700", color: "#0369a1" }}
-            >
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+          <div className="rounded-2xl bg-gradient-to-br from-sky-50 to-blue-100 p-6 border border-sky-200">
+            <p className="text-sm font-medium text-sky-700">Assigned Exams</p>
+            <p className="text-4xl font-bold text-sky-900 mt-2">
               {studentAssignments.length}
             </p>
           </div>
-          <div
-            className="card"
-            style={{ background: "#ecfdf5", padding: "16px" }}
-          >
-            <p className="text-sm text-gray">Completed</p>
-            <p
-              style={{ fontSize: "32px", fontWeight: "700", color: "#15803d" }}
-            >
+          <div className="rounded-2xl bg-gradient-to-br from-emerald-50 to-green-100 p-6 border border-emerald-200">
+            <p className="text-sm font-medium text-emerald-700">Completed</p>
+            <p className="text-4xl font-bold text-emerald-900 mt-2">
               {completedCount}
             </p>
           </div>
-          <div
-            className="card"
-            style={{ background: "#fef9c3", padding: "16px" }}
-          >
-            <p className="text-sm text-gray">In Progress</p>
-            <p
-              style={{ fontSize: "32px", fontWeight: "700", color: "#a16207" }}
-            >
+          <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-yellow-100 p-6 border border-amber-200">
+            <p className="text-sm font-medium text-amber-700">In Progress</p>
+            <p className="text-4xl font-bold text-amber-900 mt-2">
               {inProgressCount}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Assignments Table */}
-      <div className="card mb-4">
-        <div className="flex-between mb-4">
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Shield size={20} style={{ color: "#2563eb" }} />
-            <h2 style={{ fontSize: "20px", fontWeight: "600" }}>
+      {/* Exam Assignments */}
+      <div className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-xl p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Shield className="text-blue-600" size={28} />
+            <h2 className="text-2xl font-bold text-gray-800">
               Exam Assignments
             </h2>
           </div>
-          <span className="text-sm text-gray">
-            Manage attempts, review access, and remove assignments
-          </span>
+          <p className="text-sm text-gray-600">
+            Adjust attempts • Toggle review • Remove access
+          </p>
         </div>
 
         {studentAssignments.length === 0 ? (
-          <div
-            style={{ padding: "40px", textAlign: "center", color: "#6b7280" }}
-          >
-            <p>No exams assigned to this student yet.</p>
+          <div className="text-center py-16">
+            <Shield size={64} className="mx-auto text-gray-300 mb-4" />
+            <p className="text-gray-500">
+              No exams assigned to this student yet
+            </p>
           </div>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Exam</th>
-                <th>Attempts</th>
-                <th>Used</th>
-                <th>Opens / Closes</th>
-                <th>Review</th>
-                <th style={{ width: "200px" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {studentAssignments.map((assignment) => {
-                const examName = assignment.examId?.name || "Unknown Exam";
-                const opens = assignment.opensAt
-                  ? format(new Date(assignment.opensAt), "MMM d, h:mm a")
-                  : "Default";
-                const closes = assignment.closesAt
-                  ? format(new Date(assignment.closesAt), "MMM d, h:mm a")
-                  : "Default";
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-sm font-semibold text-gray-700 border-b border-gray-200">
+                  <th className="pb-4">Exam</th>
+                  <th className="pb-4">Attempts</th>
+                  <th className="pb-4">Used</th>
+                  <th className="pb-4">Opens / Closes</th>
+                  <th className="pb-4">Review</th>
+                  <th className="pb-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {studentAssignments.map((assignment) => {
+                  const exam = assignment.examId;
+                  const opens = assignment.opensAt
+                    ? format(new Date(assignment.opensAt), "MMM d, h:mm a")
+                    : "Default";
+                  const closes = assignment.closesAt
+                    ? format(new Date(assignment.closesAt), "MMM d, h:mm a")
+                    : "Default";
 
-                return (
-                  <tr key={assignment.id}>
-                    <td>
-                      <div>
-                        <p style={{ fontWeight: "600" }}>{examName}</p>
-                        <span className="text-xs text-gray">
-                          {assignment.examId?.categoryId?.name ||
-                            "Uncategorized"}
+                  return (
+                    <tr
+                      key={assignment.id}
+                      className="border-b border-gray-100 hover:bg-blue-50/30 transition"
+                    >
+                      <td className="py-5">
+                        <div>
+                          <p className="font-semibold text-gray-800">
+                            {exam?.name || "Unknown"}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {exam?.categoryId?.name || "Uncategorized"}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="py-5">
+                        <span className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-full font-bold text-sm">
+                          {assignment.allowedAttempts || "∞"}
                         </span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="badge badge-blue">
-                        {assignment.allowedAttempts}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="badge badge-gray">
-                        {assignment.attemptsUsed || 0}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ fontSize: "12px" }}>
-                        <div>{opens}</div>
-                        <div style={{ color: "#dc2626" }}>{closes}</div>
-                      </div>
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          assignment.isReviewAllowed
-                            ? "badge-green"
-                            : "badge-red"
-                        }`}
-                        style={{ cursor: "pointer" }}
-                        onClick={() => handleToggleReview(assignment)}
-                      >
-                        {assignment.isReviewAllowed ? "Allowed" : "Disabled"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex gap-2">
+                      </td>
+                      <td className="py-5">
+                        <span className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
+                          {assignment.attemptsUsed || 0}
+                        </span>
+                      </td>
+                      <td className="py-5 text-sm">
+                        <div className="text-gray-700">{opens}</div>
+                        <div className="text-red-600 font-medium">{closes}</div>
+                      </td>
+                      <td className="py-5">
                         <button
-                          className="btn btn-outline"
-                          style={{ padding: "6px 10px" }}
-                          onClick={() => handleAdjustAttempts(assignment, 1)}
+                          onClick={() => handleToggleReview(assignment)}
+                          className="group relative"
                         >
-                          <Plus size={14} />
+                          {assignment.isReviewAllowed ? (
+                            <CheckCircle2
+                              className="text-emerald-600 group-hover:text-emerald-700 transition"
+                              size={22}
+                            />
+                          ) : (
+                            <XCircle
+                              className="text-gray-400 group-hover:text-red-500 transition"
+                              size={22}
+                            />
+                          )}
                         </button>
-                        <button
-                          className="btn btn-outline"
-                          style={{ padding: "6px 10px" }}
-                          onClick={() => handleAdjustAttempts(assignment, -1)}
-                          disabled={assignment.allowedAttempts <= 1}
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <button
-                          className="btn btn-danger"
-                          style={{ padding: "6px 10px" }}
-                          onClick={() => {
-                            if (
-                              confirm(
-                                "Remove this exam assignment permanently?"
-                              )
-                            ) {
-                              deleteAssignment.mutate(assignment.id);
-                            }
-                          }}
-                        >
-                          <Ban size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="py-5">
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => handleAdjustAttempts(assignment, 1)}
+                            className="p-2.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition"
+                          >
+                            <Plus size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleAdjustAttempts(assignment, -1)}
+                            disabled={(assignment.allowedAttempts || 1) <= 1}
+                            className="p-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Minus size={18} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  "Remove this exam assignment permanently?"
+                                )
+                              ) {
+                                deleteAssignment.mutate(assignment.id);
+                              }
+                            }}
+                            className="p-2.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition"
+                          >
+                            <Ban size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
       {/* Recent Sessions */}
-      <div className="card">
-        <h2
-          style={{ fontSize: "20px", fontWeight: "600", marginBottom: "16px" }}
-        >
+      <div className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-xl p-8">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+          <Clock className="text-blue-600" size={28} />
           Recent Exam Sessions
         </h2>
 
         {studentSessions.length === 0 ? (
-          <p style={{ padding: "32px", textAlign: "center", color: "#6b7280" }}>
-            No exam sessions started yet.
-          </p>
+          <div className="text-center py-16">
+            <Clock size={64} className="mx-auto text-gray-300 mb-4" />
+            <p className="text-gray-500">No exam sessions started yet</p>
+          </div>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Exam</th>
-                <th>Status</th>
-                <th>Started</th>
-                <th>Submitted</th>
-                <th>Time Left</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {studentSessions.slice(0, 10).map((session) => {
-                const isSubmitted = !!session.submittedAt;
-                const timeLeft = session.remainingTime;
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-sm font-semibold text-gray-700 border-b border-gray-200">
+                  <th className="pb-4">Exam</th>
+                  <th className="pb-4">Status</th>
+                  <th className="pb-4">Started</th>
+                  <th className="pb-4">Submitted</th>
+                  <th className="pb-4">Time Left</th>
+                  <th className="pb-4 text-center">Grade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {studentSessions.slice(0, 10).map((session) => {
+                  const isSubmitted = !!session.submittedAt;
+                  const timeLeft = session.remainingTime;
 
-                return (
-                  <tr key={session.id}>
-                    <td style={{ fontWeight: "500" }}>
-                      {session.assignmentId?.examId?.name || "Unknown"}
-                    </td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          isSubmitted ? "badge-green" : "badge-yellow"
-                        }`}
-                      >
-                        {isSubmitted ? "Submitted" : "In Progress"}
-                      </span>
-                    </td>
-                    <td>
-                      {session.createdAt
-                        ? format(new Date(session.createdAt), "MMM d, h:mm a")
-                        : "—"}
-                    </td>
-                    <td>
-                      {session.submittedAt
-                        ? format(new Date(session.submittedAt), "MMM d, h:mm a")
-                        : "—"}
-                    </td>
-                    <td>
-                      {timeLeft === null ? (
-                        <span className="text-gray">Untimed</span>
-                      ) : timeLeft === 0 ? (
-                        <span style={{ color: "#dc2626" }}>Time Up</span>
-                      ) : timeLeft > 0 ? (
-                        <span>
-                          {Math.floor(timeLeft / 60)}m {timeLeft % 60}s
+                  return (
+                    <tr
+                      key={session.id}
+                      className="border-b border-gray-100 hover:bg-blue-50/30 transition"
+                    >
+                      <td className="py-5 font-medium text-gray-800">
+                        {session.assignmentId?.examId?.name || "Unknown"}
+                      </td>
+                      <td className="py-5">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
+                            isSubmitted
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {isSubmitted ? "Submitted" : "In Progress"}
                         </span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td>
-                      <Link
-                        to={`/admin/grades/${session.id}`}
-                        className="btn btn-outline"
-                        style={{ padding: "6px 12px", fontSize: "13px" }}
-                      >
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="py-5 text-sm text-gray-600">
+                        {session.createdAt
+                          ? format(new Date(session.createdAt), "MMM d, h:mm a")
+                          : "—"}
+                      </td>
+                      <td className="py-5 text-sm text-gray-600">
+                        {session.submittedAt
+                          ? format(
+                              new Date(session.submittedAt),
+                              "MMM d, h:mm a"
+                            )
+                          : "—"}
+                      </td>
+                      <td className="py-5 text-sm">
+                        {timeLeft === null ? (
+                          <span className="text-gray-500 italic">Untimed</span>
+                        ) : timeLeft === 0 ? (
+                          <span className="text-red-600 font-medium">
+                            Time Up
+                          </span>
+                        ) : timeLeft > 0 ? (
+                          <span className="font-medium">
+                            {Math.floor(timeLeft / 60)}m {timeLeft % 60}s
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="py-5 text-center">
+                        {session.submittedAt ? (
+                          <Link
+                            to={`/admin/grades/${session.id}`}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl hover:shadow-lg transition-all"
+                          >
+                            <Eye size={18} />
+                            View Grade
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

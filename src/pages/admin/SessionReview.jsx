@@ -6,20 +6,23 @@ import {
   Clock,
   UserCircle,
   BookOpen,
-  CheckCircle,
+  CheckCircle2,
   XCircle,
   HelpCircle,
+  Trophy,
+  Target,
+  Timer,
+  Calendar,
 } from "lucide-react";
 import { format, formatDuration, intervalToDuration } from "date-fns";
 
 export default function SessionReview() {
   const { sessionId } = useParams();
 
-  const { data: session, isLoading: sessionLoading } = useQuery({
+  const { data: sessionRes, isLoading: sessionLoading } = useQuery({
     queryKey: ["session", sessionId],
-    queryFn: () =>
-      sessionsAPI.getById(sessionId).then((res) => res.data.session),
-    enabled: Boolean(sessionId),
+    queryFn: () => sessionsAPI.getById(sessionId).then((res) => res.data),
+    enabled: !!sessionId,
   });
 
   const { data: answers = [], isLoading: answersLoading } = useQuery({
@@ -28,27 +31,27 @@ export default function SessionReview() {
       submittedAnswersAPI
         .getBySession(sessionId)
         .then((res) => res.data.answers || []),
-    enabled: Boolean(sessionId),
+    enabled: !!sessionId,
   });
 
   if (sessionLoading || answersLoading) {
     return (
-      <div className="flex-center" style={{ minHeight: "100vh" }}>
-        <div className="spinner"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-20 h-20 border-6 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  if (!session) return null;
+  if (!sessionRes?.session?.id) return null;
 
+  const session = sessionRes.session;
   const exam = session.assignmentId?.examId;
+  const student = session.assignmentId?.studentId;
   const questions = exam?.questions || [];
   const totalMarks = questions.reduce((sum, q) => sum + (q.marks || 1), 0);
   const obtainedMarks = session.grade || 0;
-  const percentage =
-    totalMarks > 0 ? ((obtainedMarks / totalMarks) * 100).toFixed(1) : 0;
+  const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
 
-  // Time taken
   const timeTakenSeconds = session.timeConsumedBeforeResume || 0;
   const duration = intervalToDuration({
     start: 0,
@@ -56,309 +59,272 @@ export default function SessionReview() {
   });
   const formattedTime =
     formatDuration(duration, { format: ["hours", "minutes", "seconds"] }) ||
-    "0 seconds";
+    "0s";
+
   const answerMap = answers.reduce((map, ans) => {
     map[ans.questionId.id] = ans;
     return map;
   }, {});
 
+  const correctCount = answers.filter((a) => a.isCorrect).length;
+  const wrongCount = answers.filter((a) => a.isCorrect === false).length;
+  const skippedCount = questions.length - answers.length;
+
+  const getScoreColor = () => {
+    if (percentage >= 90) return "from-emerald-500 to-teal-600";
+    if (percentage >= 70) return "from-green-500 to-emerald-600";
+    if (percentage >= 50) return "from-amber-500 to-orange-600";
+    return "from-red-500 to-rose-600";
+  };
+
   return (
-    <div className="container" style={{ padding: "32px 20px 64px" }}>
+    <div className="space-y-8 pb-16">
       {/* Back Button */}
       <Link
-        to={`/admin/students/${session.assignmentId?.studentId?.id}`}
-        className="btn btn-outline"
-        style={{ marginBottom: "24px" }}
+        to={`/admin/students/${student?.id}`}
+        className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium hover:underline transition"
       >
-        <ArrowLeft size={18} />
+        <ArrowLeft size={22} />
         Back to Student Profile
       </Link>
 
-      {/* Header Card */}
-      <div className="card" style={{ marginBottom: "24px" }}>
-        <div className="flex-between" style={{ marginBottom: "20px" }}>
-          <div>
-            <h1 style={{ fontSize: "28px", fontWeight: "bold" }}>
-              Session Review
-            </h1>
-            <p className="text-gray" style={{ marginTop: "6px" }}>
-              {exam?.name} • Submitted on{" "}
-              {format(new Date(session.submittedAt), "dd MMM yyyy 'at' HH:mm")}
-            </p>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <span className="badge badge-green">Submitted</span>
-          </div>
-        </div>
-
-        {/* Summary Grid */}
-        <div className="grid grid-3" style={{ gap: "20px", marginTop: "24px" }}>
-          <div
-            className="card"
-            style={{ background: "#f9fafb", padding: "16px" }}
-          >
-            <div className="flex gap-2">
-              <UserCircle size={20} style={{ color: "#2563eb" }} />
-              <div>
-                <p className="text-sm text-gray">Student</p>
-                <p style={{ fontWeight: "600", fontSize: "15px" }}>
-                  {session.assignmentId?.studentId?.name}
-                </p>
-                <p className="text-xs text-gray">
-                  {session.assignmentId?.studentId?.email}
-                </p>
+      {/* Hero Header with Score Ring */}
+      <div className="rounded-3xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-2xl overflow-hidden">
+        <div className="p-10">
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-800 mb-3">
+                Session Review
+              </h1>
+              <div className="flex items-center gap-4 text-gray-600">
+                <BookOpen size={20} />
+                <span className="font-medium">{exam?.name}</span>
+                <span>•</span>
+                <Calendar size={18} />
+                <span>
+                  {format(
+                    new Date(session.submittedAt),
+                    "dd MMM yyyy 'at' HH:mm"
+                  )}
+                </span>
               </div>
             </div>
-          </div>
 
-          <div
-            className="card"
-            style={{ background: "#f9fafb", padding: "16px" }}
-          >
-            <div className="flex gap-2">
-              <BookOpen size={20} style={{ color: "#2563eb" }} />
-              <div>
-                <p className="text-sm text-gray">Exam</p>
-                <p style={{ fontWeight: "600", fontSize: "15px" }}>
-                  {exam?.name}
-                </p>
-                <p className="text-xs text-gray">{exam?.categoryId?.name}</p>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="card"
-            style={{ background: "#f9fafb", padding: "16px" }}
-          >
-            <div className="flex gap-2">
-              <Clock size={20} style={{ color: "#2563eb" }} />
-              <div>
-                <p className="text-sm text-gray">Time Taken</p>
-                <p style={{ fontWeight: "600", fontSize: "15px" }}>
-                  {formattedTime}
-                </p>
-                <p className="text-xs text-gray">
-                  out of{" "}
-                  {exam?.duration ? `${exam.duration / 60} minutes` : "N/A"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div
-            className="card"
-            style={{ background: "#f9fafb", padding: "16px" }}
-          >
-            <div className="flex gap-4">
+            {/* Score Ring */}
+            <div className="relative">
               <div
-                style={{
-                  fontSize: "38px",
-                  fontWeight: "bold",
-                  color:
-                    percentage >= 70
-                      ? "#16a34a"
-                      : percentage >= 50
-                      ? "#ca8a04"
-                      : "#dc2626",
-                }}
+                className={`w-48 h-48 rounded-full bg-gradient-to-br ${getScoreColor()} p-1`}
               >
-                {percentage}%
+                <div className="w-full h-full rounded-full bg-white/90 backdrop-blur flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="text-5xl font-bold text-gray-800">
+                      {percentage.toFixed(0)}%
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      {obtainedMarks} / {totalMarks} marks
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div style={{ alignSelf: "center" }}>
-                <p className="text-sm text-gray">Final Score</p>
-                <p style={{ fontWeight: "600", fontSize: "16px" }}>
-                  {obtainedMarks} / {totalMarks} marks
-                </p>
+              <Trophy
+                className="absolute -top-3 -right-3 text-yellow-500"
+                size={40}
+              />
+            </div>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-emerald-600">
+                {correctCount}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">Correct</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-red-600">
+                {wrongCount}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">Wrong</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-amber-600">
+                {skippedCount}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">Skipped</div>
+            </div>
+            <div className="text-center">
+              <Timer size={20} className="mx-auto text-blue-600 mb-2" />
+              <div className="text-xl font-bold text-gray-800">
+                {formattedTime}
+              </div>
+              <div className="text-sm text-gray-600">
+                {exam?.duration ? `of ${exam.duration / 60} min` : "Untimed"}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Questions with Student Answers */}
-      <div className="card">
-        <h2
-          style={{ fontSize: "22px", fontWeight: "600", marginBottom: "24px" }}
-        >
-          Detailed Answers
-        </h2>
-
-        {questions.map((question, index) => {
-          const studentAnswer = answerMap[question.id];
-          const submittedValue = studentAnswer?.submittedValue;
-          const isCorrect = studentAnswer?.isCorrect === true;
-          const wasAttempted = !!studentAnswer;
-
-          let correctAnswerText;
-          if (question.type === "mcq") {
-            if (Array.isArray(question.correctAnswer?.mcq)) {
-              correctAnswerText = question.correctAnswer.mcq[0];
-            } else {
-              correctAnswerText =
-                question.correctAnswer || question.correctAnswer?.mcq?.[0];
-            }
-          } else {
-            correctAnswerText =
-              question.correctAnswer?.short || question.correctAnswer;
-          }
-
-          return (
-            <div
-              key={question.id}
-              style={{
-                padding: "24px 0",
-                borderBottom:
-                  index < questions.length - 1 ? "1px solid #e5e7eb" : "none",
-              }}
-            >
-              <div className="flex-between" style={{ marginBottom: "12px" }}>
-                <div style={{ flex: 1 }}>
-                  <div
-                    className="flex gap-2"
-                    style={{ alignItems: "center", marginBottom: "8px" }}
-                  >
-                    <span style={{ fontWeight: "600", fontSize: "18px" }}>
-                      Q{index + 1}.
-                    </span>
-                    {wasAttempted ? (
-                      isCorrect ? (
-                        <CheckCircle size={20} style={{ color: "#16a34a" }} />
-                      ) : (
-                        <XCircle size={20} style={{ color: "#dc2626" }} />
-                      )
-                    ) : (
-                      <HelpCircle size={20} style={{ color: "#6b7280" }} />
-                    )}
-                    <span style={{ fontSize: "14px", color: "#6b7280" }}>
-                      ({question.marks} mark{question.marks > 1 ? "s" : ""})
-                    </span>
-                  </div>
-                  <p style={{ color: "#1f2937", lineHeight: "1.5" }}>
-                    {question.text}
-                  </p>
-                </div>
-              </div>
-
-              {/* MCQ Options */}
-              {question.type === "mcq" && question.options && (
-                <div
-                  style={{ marginTop: "16px", display: "grid", gap: "10px" }}
-                >
-                  {question.options.map((opt, i) => {
-                    const isCorrectOption =
-                      opt.text === correctAnswerText ||
-                      (Array.isArray(question.correctAnswer?.mcq) &&
-                        question.correctAnswer.mcq.includes(opt.text));
-
-                    const isSelected = opt.text === submittedValue;
-
-                    let bg, borderColor, textColor, icon;
-
-                    if (isCorrectOption) {
-                      bg = "#f0fdf4";
-                      borderColor = "#16a34a";
-                      textColor = "#166534";
-                      icon = (
-                        <CheckCircle size={18} style={{ color: "#16a34a" }} />
-                      );
-                    } else if (isSelected && !isCorrect) {
-                      bg = "#fef2f2";
-                      borderColor = "#dc2626";
-                      textColor = "#991b1b";
-                      icon = <XCircle size={18} style={{ color: "#dc2626" }} />;
-                    } else {
-                      bg = "#f9fafb";
-                      borderColor = "#d1d1d5db";
-                      textColor = "inherit";
-                      icon = (
-                        <div
-                          style={{
-                            width: "18px",
-                            height: "18px",
-                            borderRadius: "50%",
-                            border: "2px solid #d1d5db",
-                          }}
-                        />
-                      );
-                    }
-
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          padding: "12px 16px",
-                          borderRadius: "8px",
-                          border: `1px solid ${borderColor}`,
-                          background: bg,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                        }}
-                      >
-                        {icon}
-                        <span
-                          style={{
-                            color: textColor,
-                            fontWeight: isSelected ? "600" : "normal",
-                          }}
-                        >
-                          {opt.text}
-                          {isSelected && !isCorrectOption && " (Your Answer)"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Feedback */}
-              {question.feedback && (
-                <div
-                  style={{
-                    marginTop: "20px",
-                    padding: "16px",
-                    background: "#eff6ff",
-                    borderRadius: "8px",
-                    border: "1px solid #bfdbfe",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontWeight: "500",
-                      color: "#1e40af",
-                      fontSize: "14px",
-                    }}
-                  >
-                    Explanation
-                  </p>
-                  <p
-                    style={{
-                      marginTop: "6px",
-                      color: "#1e40af",
-                      lineHeight: "1.5",
-                    }}
-                  >
-                    {question.feedback}
-                  </p>
-                </div>
-              )}
-
-              {/* Unanswered note */}
-              {!wasAttempted && (
-                <p
-                  style={{
-                    marginTop: "12px",
-                    fontStyle: "italic",
-                    color: "#6b7280",
-                  }}
-                >
-                  Not answered
-                </p>
-              )}
+      {/* Student & Exam Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-xl p-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+              {student?.name.charAt(0)}
             </div>
-          );
-        })}
+            <div>
+              <p className="text-sm text-gray-600">Student</p>
+              <p className="font-bold text-gray-800">{student?.name}</p>
+              <p className="text-sm text-gray-500">{student?.email}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-xl p-6">
+          <div className="flex items-center gap-4">
+            <BookOpen className="text-blue-600" size={40} />
+            <div>
+              <p className="text-sm text-gray-600">Exam</p>
+              <p className="font-bold text-gray-800">{exam?.name}</p>
+              <p className="text-sm text-gray-500">
+                {exam?.categoryId?.name || "Uncategorized"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Detailed Answers */}
+      <div className="rounded-3xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-2xl overflow-hidden">
+        <div className="p-8 border-b border-gray-200">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+            <Target className="text-blue-600" size={28} />
+            Detailed Answers ({questions.length} Questions)
+          </h2>
+        </div>
+
+        <div className="divide-y divide-gray-200">
+          {questions.map((question, index) => {
+            const studentAnswer = answerMap[question.id];
+            const submittedValue = studentAnswer?.submittedValue;
+            const isCorrect = studentAnswer?.isCorrect === true;
+            const wasAttempted = !!studentAnswer;
+
+            const correctAnswerText =
+              question.type === "mcq"
+                ? question.correctAnswer?.mcq?.[0] || question.correctAnswer
+                : question.correctAnswer?.short || question.correctAnswer;
+
+            return (
+              <div
+                key={question.id}
+                className="p-8 hover:bg-blue-50/30 transition"
+              >
+                <div className="flex items-start justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="text-2xl font-bold text-gray-700">
+                      Q{index + 1}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {wasAttempted ? (
+                        isCorrect ? (
+                          <CheckCircle2
+                            className="text-emerald-600"
+                            size={28}
+                          />
+                        ) : (
+                          <XCircle className="text-red-600" size={28} />
+                        )
+                      ) : (
+                        <HelpCircle className="text-gray-400" size={28} />
+                      )}
+                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm font-medium text-gray-700">
+                        {question.marks} mark{question.marks > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-lg text-gray-800 font-medium mb-6 leading-relaxed">
+                  {question.text}
+                </p>
+
+                {question.type === "mcq" && question.options && (
+                  <div className="space-y-3">
+                    {question.options.map((opt, i) => {
+                      const isCorrectOption = opt.text === correctAnswerText;
+                      const isSelected = opt.text === submittedValue;
+
+                      return (
+                        <div
+                          key={i}
+                          className={`
+                            p-4 rounded-xl border-2 transition-all
+                            ${
+                              isCorrectOption
+                                ? "border-emerald-500 bg-emerald-50"
+                                : isSelected && !isCorrect
+                                ? "border-red-500 bg-red-50"
+                                : "border-gray-200 bg-gray-50"
+                            }
+                          `}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span
+                              className={`
+                              font-medium
+                              ${
+                                isCorrectOption
+                                  ? "text-emerald-800"
+                                  : isSelected && !isCorrect
+                                  ? "text-red-800"
+                                  : "text-gray-700"
+                              }
+                            `}
+                            >
+                              {opt.text}
+                              {isSelected &&
+                                !isCorrectOption &&
+                                " (Your Answer)"}
+                            </span>
+                            {isCorrectOption && (
+                              <CheckCircle2
+                                className="text-emerald-600"
+                                size={22}
+                              />
+                            )}
+                            {isSelected && !isCorrect && (
+                              <XCircle className="text-red-600" size={22} />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Feedback Box */}
+                {question.feedback && (
+                  <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl">
+                    <p className="font-semibold text-blue-800 mb-2">
+                      Explanation
+                    </p>
+                    <p className="text-blue-700 leading-relaxed">
+                      {question.feedback}
+                    </p>
+                  </div>
+                )}
+
+                {!wasAttempted && (
+                  <p className="mt-6 text-amber-700 font-medium italic">
+                    Question was not answered
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

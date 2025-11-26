@@ -77,6 +77,7 @@ function App() {
           <Route path="exams" element={<Exams />} />
           <Route path="exams/create" element={<CreateExam />} />
           <Route path="exams/:id" element={<ExamDetails />} />
+          <Route path="/admin/exams/:id/edit" element={<CreateExam />} />
           {/* <Route path="review" element={<ReviewControls />} /> */}
           <Route path="students" element={<Students />} />
           <Route path="students/:studentId" element={<StudentProfile />} />

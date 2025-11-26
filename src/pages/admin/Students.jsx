@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersAPI } from "../../lib/api";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
-import { UserPlus, X } from "lucide-react";
+import { UserPlus, X, Search, Users, Calendar, Mail } from "lucide-react";
 
 export default function Students() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -16,7 +17,7 @@ export default function Students() {
 
   const queryClient = useQueryClient();
 
-  const { data: students, isLoading } = useQuery({
+  const { data: students = [], isLoading } = useQuery({
     queryKey: ["students"],
     queryFn: () =>
       usersAPI
@@ -25,6 +26,16 @@ export default function Students() {
           (res) => res.data?.users?.filter((u) => u.role === "student") || []
         ),
   });
+
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm.trim()) return students;
+    const term = searchTerm.toLowerCase();
+    return students.filter(
+      (s) =>
+        s.name.toLowerCase().includes(term) ||
+        s.email.toLowerCase().includes(term)
+    );
+  }, [students, searchTerm]);
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -53,7 +64,6 @@ export default function Students() {
       setError("All fields are required");
       return;
     }
-
     if (formData.password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -64,172 +74,215 @@ export default function Students() {
 
   if (isLoading) {
     return (
-      <div className="loading">
-        <div className="spinner"></div>
+      <div className="flex items-center justify-center h-96">
+        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div
-      className="container"
-      style={{ paddingTop: "24px", paddingBottom: "40px" }}
-    >
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex-between mb-4">
-        <h1 style={{ fontSize: "32px", fontWeight: "700", color: "#1f2937" }}>
-          Students
-        </h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <span className="text-sm text-gray">
-            Total: <strong>{students.length}</strong> student
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-800 flex items-center gap-3">
+            <Users className="text-blue-600" size={40} />
+            Students
+          </h1>
+          <p className="text-gray-600 mt-2">
+            Manage your aviation students and their accounts
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="text-sm font-medium text-gray-600">
+            Total: <strong className="text-blue-600">{students.length}</strong>{" "}
+            student
             {students.length !== 1 ? "s" : ""}
-          </span>
+            {searchTerm && (
+              <>
+                {" • "}Showing:{" "}
+                <strong className="text-blue-600">
+                  {filteredStudents.length}
+                </strong>
+              </>
+            )}
+          </div>
+
           <button
-            className="btn btn-primary"
             onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
           >
-            <UserPlus size={18} />
+            <UserPlus size={22} />
             Add Student
           </button>
         </div>
       </div>
 
-      {/* Students Table */}
-      {students.length === 0 ? (
-        <div className="card">
-          <div
-            style={{
-              padding: "60px 24px",
-              textAlign: "center",
-              color: "#6b7280",
-            }}
+      {/* Search Bar */}
+      <div className="relative max-w-2xl">
+        <Search
+          className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"
+          size={22}
+        />
+        <input
+          type="text"
+          placeholder="Search by name or email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-14 pr-12 py-4 bg-white/70 backdrop-blur-xl border border-white/30 rounded-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all text-gray-800 placeholder-gray-500"
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm("")}
+            className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
           >
-            <div
-              style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.3 }}
-            >
-              Students
-            </div>
-            <p style={{ fontSize: "18px", marginBottom: "20px" }}>
-              No students registered yet
-            </p>
+            <X size={20} />
+          </button>
+        )}
+      </div>
+
+      {/* Students Grid or Empty State */}
+      {filteredStudents.length === 0 ? (
+        <div className="text-center py-20">
+          <div className="w-32 h-32 mx-auto mb-8 bg-gray-100 rounded-full flex items-center justify-center">
+            {searchTerm ? (
+              <Search size={64} className="text-gray-400" />
+            ) : (
+              <Users size={64} className="text-gray-400" />
+            )}
+          </div>
+          <h3 className="text-2xl font-semibold text-gray-700 mb-3">
+            {searchTerm
+              ? `No students found for "${searchTerm}"`
+              : "No students registered yet"}
+          </h3>
+          <p className="text-gray-500 mb-8 max-w-md mx-auto">
+            {searchTerm
+              ? "Try adjusting your search terms"
+              : "Get started by adding your first student"}
+          </p>
+          {!searchTerm && (
             <button
-              className="btn btn-primary"
               onClick={() => setShowAddModal(true)}
+              className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
             >
-              <UserPlus size={18} />
+              <UserPlus size={24} />
               Add Your First Student
             </button>
-          </div>
+          )}
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition"
+            >
+              Clear Search
+            </button>
+          )}
         </div>
       ) : (
-        <div className="card">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Registered On</th>
-                <th style={{ width: "120px" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => (
-                <tr key={student.id}>
-                  <td>
-                    <Link
-                      to={`/admin/students/${student.id}`}
-                      style={{
-                        fontWeight: "600",
-                        color: "#2563eb",
-                        textDecoration: "none",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.target.style.textDecoration = "underline")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.target.style.textDecoration = "none")
-                      }
-                    >
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredStudents.map((student) => (
+            <Link
+              key={student.id}
+              to={`/admin/students/${student.id}`}
+              className="group block rounded-2xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+            >
+              <div className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                    {student.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-800 group-hover:text-blue-600 transition">
                       {student.name}
-                    </Link>
-                  </td>
-                  <td>
-                    <span style={{ fontFamily: "monospace", fontSize: "14px" }}>
+                    </h3>
+                    <p className="text-sm text-gray-600 flex items-center gap-2 mt-1">
+                      <Mail size={14} />
                       {student.email}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Calendar size={16} />
+                    <span>
+                      Joined{" "}
+                      {format(new Date(student.createdAt), "MMM d, yyyy")}
                     </span>
-                  </td>
-                  <td>{format(new Date(student.createdAt), "MMM d, yyyy")}</td>
-                  <td>
-                    <Link
-                      to={`/admin/students/${student.id}`}
-                      className="btn btn-outline"
-                      style={{ padding: "6px 14px", fontSize: "13px" }}
-                    >
-                      View
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                  <span className="text-blue-600 font-medium group-hover:translate-x-1 transition">
+                    View Profile →
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
 
       {/* Add Student Modal */}
       {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setShowAddModal(false)}
+        >
           <div
-            className="modal"
-            style={{ maxWidth: "500px", width: "90%" }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex-between mb-4">
-              <h2 style={{ fontSize: "22px", fontWeight: "700" }}>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                <UserPlus size={28} className="text-blue-600" />
                 Add New Student
               </h2>
               <button
-                className="btn btn-outline"
-                style={{ padding: "6px" }}
                 onClick={() => setShowAddModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
               >
-                <X size={20} />
+                <X size={22} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label className="label">Full Name *</label>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
-                  className="input"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
                   placeholder="John Doe"
                   autoFocus
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none"
                 />
               </div>
 
-              <div className="form-group">
-                <label className="label">Email Address *</label>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="email"
-                  className="input"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, email: e.target.value }))
                   }
                   placeholder="john@example.com"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none"
                 />
               </div>
 
-              <div className="form-group">
-                <label className="label">Password *</label>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Password <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="password"
-                  className="input"
                   value={formData.password}
                   onChange={(e) =>
                     setFormData((prev) => ({
@@ -238,31 +291,29 @@ export default function Students() {
                     }))
                   }
                   placeholder="Minimum 6 characters"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none"
                 />
               </div>
 
               {error && (
-                <div className="error-text" style={{ marginBottom: "16px" }}>
+                <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
                   {error}
                 </div>
               )}
 
-              <div
-                className="flex"
-                style={{ justifyContent: "flex-end", gap: "12px" }}
-              >
+              <div className="flex justify-end gap-4 pt-4">
                 <button
                   type="button"
-                  className="btn btn-outline"
                   onClick={() => setShowAddModal(false)}
                   disabled={createMutation.isPending}
+                  className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-primary"
                   disabled={createMutation.isPending}
+                  className="px-8 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl disabled:opacity-70 transition-all"
                 >
                   {createMutation.isPending ? "Creating..." : "Create Student"}
                 </button>
