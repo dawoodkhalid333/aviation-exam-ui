@@ -253,8 +253,8 @@ export default function SessionReview() {
                 {question.type === "mcq" && question.options && (
                   <div className="space-y-3">
                     {question.options.map((opt, i) => {
-                      const isCorrectOption = opt.text === correctAnswerText;
-                      const isSelected = opt.text === submittedValue;
+                      const isCorrectOption = opt === correctAnswerText;
+                      const isSelected = opt === submittedValue;
 
                       return (
                         <div
@@ -283,7 +283,7 @@ export default function SessionReview() {
                               }
                             `}
                             >
-                              {opt.text}
+                              {opt}
                               {isSelected &&
                                 !isCorrectOption &&
                                 " (Your Answer)"}

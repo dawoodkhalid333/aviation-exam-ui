@@ -273,8 +273,8 @@ export default function ExamResults() {
                       {question.type === "mcq" && question.options && (
                         <div className="space-y-3">
                           {question.options.map((opt, i) => {
-                            const isCorrectOpt = opt.text === correctAnswerText;
-                            const isSelected = opt.text === submittedValue;
+                            const isCorrectOpt = opt === correctAnswerText;
+                            const isSelected = opt === submittedValue;
 
                             return (
                               <div
@@ -297,7 +297,7 @@ export default function ExamResults() {
                                         : "text-gray-700"
                                     }`}
                                   >
-                                    {opt.text}
+                                    {opt}
                                     {isSelected &&
                                       !isCorrectOpt &&
                                       " (Your Answer)"}
