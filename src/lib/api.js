@@ -86,8 +86,9 @@ export const sessionsAPI = {
     api.get(`/exam-sessions/remaining-time/${sessionId}`),
   getById: (sessionId) => api.get(`/exam-sessions/${sessionId}`),
   start: (assignmentId) => api.post("/exam-sessions/start", assignmentId),
-  resume: (sessionId) => api.post(`/exam-sessions/resume/${sessionId}`),
   submit: (sessionId) => api.post(`/exam-sessions/${sessionId}/submit`),
+  toggleBookmark: (sessionId, questionId) =>
+    api.post(`/exam-sessions/${sessionId}/bookmark/${questionId}`),
 };
 
 // Submitted Answers API

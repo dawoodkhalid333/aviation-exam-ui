@@ -56,21 +56,10 @@ export default function StudentExams() {
     try {
       const { data } = await startMutation.mutateAsync(assignmentId);
       navigate(`/student/exams/${assignmentId}/take`, {
-        state: { startRes: data },
+        state: { sessionId: data?.session?.id },
       });
     } catch (err) {
       console.error("Failed to start exam:", err);
-    }
-  };
-
-  const resumeExam = async (session) => {
-    try {
-      const { data } = await resumeMutation.mutateAsync(session.id);
-      navigate(`/student/exams/${session.assignmentId}/take`, {
-        state: { startRes: data },
-      });
-    } catch (err) {
-      console.error("Failed to resume exam:", err);
     }
   };
 
@@ -285,11 +274,7 @@ export default function StudentExams() {
 
                       {canStart && (
                         <button
-                          onClick={() =>
-                            hasActiveSession
-                              ? resumeExam(assignment.sessionToResume)
-                              : startExam(assignment.id)
-                          }
+                          onClick={() => startExam(assignment.id)}
                           disabled={
                             startMutation.isPending || resumeMutation.isPending
                           }
