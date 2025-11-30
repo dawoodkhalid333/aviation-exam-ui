@@ -124,4 +124,10 @@ export const logsAPI = {
   delete: (id) => api.delete(`/activity-logs/${id}`),
 };
 
+// Media
+export const mediaAPI = {
+  upload: (file) => api.post("/media/upload", file),
+  getById: (id) => `https://exampro-api.avantlabstech.com/api/media/${id}`,
+};
+
 export default api;

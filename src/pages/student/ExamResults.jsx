@@ -69,7 +69,7 @@ export default function ExamResults() {
   const obtainedMarks = session.grade || 0;
   const percentage =
     totalMarks > 0 ? Math.round((obtainedMarks / totalMarks) * 100) : 0;
-  const isPassed = percentage >= 70;
+  const isPassed = percentage >= exam.passingPercentage;
 
   const correctCount = answers.filter((a) => a.isCorrect).length;
   const wrongCount = answers.filter((a) => a.isCorrect === false).length;
@@ -91,9 +91,9 @@ export default function ExamResults() {
   }, {});
 
   const getScoreGradient = () => {
-    if (percentage >= 90) return "from-emerald-500 to-teal-600";
-    if (percentage >= 70) return "from-green-500 to-emerald-600";
-    if (percentage >= 50) return "from-amber-500 to-orange-600";
+    if (percentage >= exam?.passingPercentage)
+      return "from-emerald-500 to-teal-600";
+    if (percentage < exam?.passingPercentage) return "from-red-500 to-rose-600";
     return "from-red-500 to-rose-600";
   };
 

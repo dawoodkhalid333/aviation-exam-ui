@@ -198,7 +198,7 @@ export default function StudentDashboard() {
                                 "dd MMM yyyy, HH:mm"
                               )}
                             </span>
-                            {session.submittedAt && (
+                            {/* {session.submittedAt && (
                               <span className="text-emerald-600 font-medium">
                                 Submitted in{" "}
                                 {Math.round(
@@ -208,7 +208,7 @@ export default function StudentDashboard() {
                                 )}{" "}
                                 min
                               </span>
-                            )}
+                            )} */}
                           </div>
                         </div>
                       </div>

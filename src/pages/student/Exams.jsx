@@ -15,17 +15,15 @@ import {
 } from "lucide-react";
 import { format, isPast, isFuture } from "date-fns";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 // ──────────────────────────────────────────────────────────────
 // BULLETPROOF DATE UTILITIES – NEVER CRASH AGAIN
 // ──────────────────────────────────────────────────────────────
 const toSafeDate = (timestamp) => {
   if (!timestamp) return null;
-  const num = Number(timestamp);
-  if (isNaN(num) || num === 0) return null;
-  const date =
-    num.toString().length <= 10 ? new Date(num * 1000) : new Date(num);
-  return isNaN(date.getTime()) ? null : date;
+  const date = new Date(timestamp);
+  return date;
 };
 
 const formatDate = (date, fmt = "dd MMM yyyy, HH:mm") => {
@@ -43,6 +41,7 @@ export default function StudentExams() {
     queryFn: () =>
       assignmentsAPI.getAll().then((res) => res.data.assignments || []),
   });
+  const [startAssignmentId, setStartAssignmentId] = useState("");
 
   const startMutation = useMutation({
     mutationFn: (assignmentId) => sessionsAPI.start({ assignmentId }),
@@ -101,7 +100,6 @@ export default function StudentExams() {
             const exam = assignment.examId;
             const opensAt = toSafeDate(assignment.opensAt);
             const closesAt = toSafeDate(assignment.closesAt);
-
             const isNotStarted = opensAt && isFuture(opensAt);
             const isExpired = closesAt && isPast(closesAt);
             const attemptsLeft =
@@ -274,7 +272,10 @@ export default function StudentExams() {
 
                       {canStart && (
                         <button
-                          onClick={() => startExam(assignment.id)}
+                          onClick={() => {
+                            setStartAssignmentId(assignment.id);
+                            startExam(assignment.id);
+                          }}
                           disabled={
                             startMutation.isPending || resumeMutation.isPending
                           }
@@ -282,7 +283,8 @@ export default function StudentExams() {
                         >
                           <PlayCircle size={32} />
                           <span className="tracking-wide">
-                            {startMutation.isPending || resumeMutation.isPending
+                            {startMutation.isPending &&
+                            startAssignmentId === assignment.id
                               ? "Preparing..."
                               : hasActiveSession
                               ? "Resume Exam"

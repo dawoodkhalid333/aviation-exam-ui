@@ -16,8 +16,11 @@ import {
   Eye,
   EyeOff,
   Mail,
+  Filter,
+  Search,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useState } from "react";
 
 export default function StudentProfile() {
   const { studentId } = useParams();
@@ -28,6 +31,7 @@ export default function StudentProfile() {
     queryFn: () => usersAPI.getById(studentId).then((res) => res.data.user),
     enabled: !!studentId,
   });
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: allAssignments = [] } = useQuery({
     queryKey: ["assignments"],
@@ -46,6 +50,13 @@ export default function StudentProfile() {
 
   const studentSessions = allSessions.filter(
     (s) => s.assignmentId?.studentId?.id === studentId
+  );
+
+  // Filter sessions based on exam name
+  const filteredSessions = studentSessions.filter((session) =>
+    (session.assignmentId?.examId?.name || "Unknown")
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase())
   );
 
   const updateAssignment = useMutation({
@@ -291,15 +302,37 @@ export default function StudentProfile() {
 
       {/* Recent Sessions */}
       <div className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-xl p-8">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-          <Clock className="text-blue-600" size={28} />
-          Recent Exam Sessions
-        </h2>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+            <Clock className="text-blue-600" size={28} />
+            Recent Exam Sessions
+          </h2>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {/* Search Bar */}
+            <div className="relative flex-1 sm:flex-initial">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                size={20}
+              />
+              <input
+                type="text"
+                placeholder="Search by exam name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-4 py-2.5 w-full sm:w-64 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              />
+            </div>
+          </div>
+        </div>
 
-        {studentSessions.length === 0 ? (
+        {filteredSessions.length === 0 ? (
           <div className="text-center py-16">
             <Clock size={64} className="mx-auto text-gray-300 mb-4" />
-            <p className="text-gray-500">No exam sessions started yet</p>
+            <p className="text-gray-500">
+              {searchTerm
+                ? `No exam sessions found matching "${searchTerm}"`
+                : "No exam sessions started yet"}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -315,7 +348,7 @@ export default function StudentProfile() {
                 </tr>
               </thead>
               <tbody>
-                {studentSessions.slice(0, 10).map((session) => {
+                {filteredSessions.slice(0, 10).map((session) => {
                   const isSubmitted = !!session.submittedAt;
                   const timeLeft = session.remainingTime;
 

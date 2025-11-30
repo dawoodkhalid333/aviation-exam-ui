@@ -39,6 +39,7 @@ export default function CreateExam() {
     closesAt: "",
     defaultAttempts: 1,
     defaultExpiry: 7,
+    passingPercentage: 50,
     reviewMode: "practice",
     questions: [],
   });
@@ -74,7 +75,7 @@ export default function CreateExam() {
         description: exam.description || "",
         type: exam.type || "timed",
         duration: exam.duration ? exam.duration / 60 : 60,
-        categoryId: exam.categoryId?._id || exam.categoryId || "",
+        categoryId: exam.categoryId?._id || exam.categoryId.id || "",
         opensAt: exam.opensAt
           ? new Date(exam.opensAt).toISOString().slice(0, 16)
           : "",
@@ -83,6 +84,7 @@ export default function CreateExam() {
           : "",
         defaultAttempts: exam.defaultAttempts || 1,
         defaultExpiry: exam.defaultExpiry || 7,
+        passingPercentage: exam.passingPercentage || 50,
         reviewMode: exam.reviewMode || "practice",
         questions: exam.questions?.map((q) => q._id || q.id) || [],
       });
@@ -207,6 +209,7 @@ export default function CreateExam() {
       questions: formData.questions,
       defaultAttempts: Number(formData.defaultAttempts),
       defaultExpiry: Number(formData.defaultExpiry),
+      passingPercentage: Number(formData.passingPercentage),
       reviewMode: formData.reviewMode,
       opensAt: new Date(formData.opensAt).toISOString(),
       closesAt: new Date(formData.closesAt).toISOString(),
@@ -385,7 +388,7 @@ export default function CreateExam() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Default Attempts
@@ -415,6 +418,24 @@ export default function CreateExam() {
                     setFormData((prev) => ({
                       ...prev,
                       defaultExpiry: e.target.value,
+                    }))
+                  }
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Passing Marks (percentage)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={formData.passingPercentage}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      passingPercentage: e.target.value,
                     }))
                   }
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none"

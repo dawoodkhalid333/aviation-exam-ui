@@ -71,9 +71,10 @@ export default function SessionReview() {
   const skippedCount = questions.length - answers.length;
 
   const getScoreColor = () => {
-    if (percentage >= 90) return "from-emerald-500 to-teal-600";
-    if (percentage >= 70) return "from-green-500 to-emerald-600";
-    if (percentage >= 50) return "from-amber-500 to-orange-600";
+    if (percentage >= session?.assignmentId?.examId?.passingPercentage)
+      return "from-emerald-500 to-teal-600";
+    if (percentage < session?.assignmentId?.examId?.passingPercentage)
+      return "from-red-500 to-rose-600";
     return "from-red-500 to-rose-600";
   };
 
