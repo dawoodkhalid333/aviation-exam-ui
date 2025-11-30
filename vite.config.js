@@ -9,7 +9,7 @@ export default defineConfig({
     allowedHosts: ["localhost", "exampro.avantlabstech.com"],
     proxy: {
       "/api": {
-        target: "https://exampro-api.avantlabstech.com",
+        target: "https://api.aviation1in60.cloud",
         changeOrigin: true,
       },
     },

@@ -15,7 +15,7 @@ export const useExamWebSocket = (sessionId, onMessage, onConnected) => {
       }
 
       const ws = new WebSocket(
-        `wss://exampro-api.avantlabstech.com/exam-socket?sessionId=${sessionId}`
+        `wss://api.aviation1in60.cloud/exam-socket?sessionId=${sessionId}`
       );
       wsRef.current = ws;
 

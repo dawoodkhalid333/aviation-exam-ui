@@ -127,7 +127,7 @@ export const logsAPI = {
 // Media
 export const mediaAPI = {
   upload: (file) => api.post("/media/upload", file),
-  getById: (id) => `https://exampro-api.avantlabstech.com/api/media/${id}`,
+  getById: (id) => `https://api.aviation1in60.cloud/api/media/${id}`,
 };
 
 export default api;
