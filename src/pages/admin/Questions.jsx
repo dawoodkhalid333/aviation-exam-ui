@@ -282,8 +282,14 @@ export default function Questions() {
                   <p className="text-gray-700 leading-relaxed">
                     {question.text}
                   </p>
+                  {question?.questionImg && (
+                    <img
+                      src={question.questionImg}
+                      className="w-[50%] mx-auto"
+                    />
+                  )}
 
-                  {question.type === "mcq" && question.options && (
+                  {question.type === "mcq" && question.options?.length ? (
                     <div className="space-y-2">
                       <p className="font-medium text-gray-700">Options:</p>
                       {question?.options
@@ -306,6 +312,34 @@ export default function Questions() {
                           </div>
                         ))}
                     </div>
+                  ) : (
+                    question.type === "mcq" &&
+                    question.optionsWithImgs?.length && (
+                      <div className="space-y-2">
+                        <p className="font-medium text-gray-700">Options:</p>
+                        {question?.optionsWithImgs?.map((opt, i) => (
+                          <>
+                            <div key={i} className="flex items-center gap-3">
+                              <span className="font-medium text-gray-500 w-6">
+                                {String.fromCharCode(65 + i)}.
+                              </span>
+                              <span
+                                className={
+                                  question.correctAnswer === opt.option
+                                    ? "text-green-600 font-medium"
+                                    : "text-gray-700"
+                                }
+                              >
+                                {opt.option}
+                                {question.correctAnswer === opt.option &&
+                                  " (Correct)"}
+                              </span>
+                            </div>
+                            <img src={opt.img} className="w-[40%] mx-auto" />
+                          </>
+                        ))}
+                      </div>
+                    )
                   )}
 
                   {question.type === "short" && (

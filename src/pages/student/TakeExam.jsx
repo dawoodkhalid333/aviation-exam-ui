@@ -298,6 +298,9 @@ export default function TakeExam() {
                 <h2 className="text-xl font-semibold text-gray-900 mt-4">
                   {currentQuestion.text}
                 </h2>
+                {currentQuestion?.questionImg && (
+                  <img src={currentQuestion?.questionImg} className="w-full" />
+                )}
               </div>
 
               {/* Bookmark Flag */}
@@ -322,36 +325,78 @@ export default function TakeExam() {
             {/* Options */}
             <div className="space-y-4">
               {currentQuestion.type === "mcq" ? (
-                currentQuestion.options.map((option, idx) => {
-                  const isSelected =
-                    selectedOption === option ||
-                    answeredQuestions.some((a) => a.submittedValue === option);
+                <>
+                  {currentQuestion?.options?.length
+                    ? currentQuestion.options.map((option, idx) => {
+                        const isSelected =
+                          selectedOption === option ||
+                          answeredQuestions.some(
+                            (a) =>
+                              a.submittedValue === option &&
+                              a.questionId === currentQuestion.id
+                          );
 
-                  return (
-                    <label
-                      key={idx}
-                      className={`flex items-center gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
-                        isSelected
-                          ? "border-blue-500 bg-blue-50"
-                          : "border-gray-300 hover:border-gray-400"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="option"
-                        value={option}
-                        checked={selectedOption === option}
-                        onChange={(e) => {
-                          setSelectedOption(e.target.value);
-                          handleAnswerSubmit(e.target.value);
-                        }}
-                        className="w-5 h-5 text-blue-600"
-                        // disabled={isAnswered}
-                      />
-                      <span className="text-lg">{option}</span>
-                    </label>
-                  );
-                })
+                        return (
+                          <label
+                            key={idx}
+                            className={`flex items-center gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                              isSelected
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-300 hover:border-gray-400"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="option"
+                              value={option}
+                              checked={isSelected}
+                              onChange={(e) => {
+                                setSelectedOption(e.target.value);
+                                handleAnswerSubmit(e.target.value);
+                              }}
+                              className="w-5 h-5 text-blue-600"
+                              // disabled={isAnswered}
+                            />
+                            <span className="text-lg">{option}</span>
+                          </label>
+                        );
+                      })
+                    : currentQuestion.optionsWithImgs.map((option, idx) => {
+                        const isSelected =
+                          selectedOption === option.option ||
+                          answeredQuestions.some(
+                            (a) =>
+                              a.submittedValue === option.option &&
+                              a.questionId === currentQuestion.id
+                          );
+
+                        return (
+                          <label
+                            key={idx}
+                            className={`flex items-center gap-4  p-5 rounded-xl border-2 cursor-pointer transition-all ${
+                              isSelected
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-300 hover:border-gray-400"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="option"
+                              value={option.option}
+                              checked={isSelected}
+                              onChange={(e) => {
+                                setSelectedOption(e.target.value);
+                                handleAnswerSubmit(e.target.value);
+                              }}
+                              className="w-5 h-5 text-blue-600"
+                              // disabled={isAnswered}
+                            />
+                            <span className="text-lg">{option.option}: </span>
+                            <img src={option.img} className="w-[50%]" />
+                          </label>
+                        );
+                      })}
+                </>
               ) : (
                 <input
                   type="number"

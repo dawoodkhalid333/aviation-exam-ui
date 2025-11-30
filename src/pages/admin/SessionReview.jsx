@@ -52,7 +52,7 @@ export default function SessionReview() {
   const obtainedMarks = session.grade || 0;
   const percentage = totalMarks > 0 ? (obtainedMarks / totalMarks) * 100 : 0;
 
-  const timeTakenSeconds = session.timeConsumedBeforeResume || 0;
+  const timeTakenSeconds = session.totalTimeConsumed || 0;
   const duration = intervalToDuration({
     start: 0,
     end: timeTakenSeconds * 1000,
@@ -251,16 +251,18 @@ export default function SessionReview() {
                   {question.text}
                 </p>
 
-                {question.type === "mcq" && question.options && (
-                  <div className="space-y-3">
-                    {question.options.map((opt, i) => {
-                      const isCorrectOption = opt === correctAnswerText;
-                      const isSelected = opt === submittedValue;
+                {question.type === "mcq" && (
+                  <>
+                    {question.options?.length ? (
+                      <div className="space-y-3">
+                        {question.options.map((opt, i) => {
+                          const isCorrectOption = opt === correctAnswerText;
+                          const isSelected = opt === submittedValue;
 
-                      return (
-                        <div
-                          key={i}
-                          className={`
+                          return (
+                            <div
+                              key={i}
+                              className={`
                             p-4 rounded-xl border-2 transition-all
                             ${
                               isCorrectOption
@@ -270,10 +272,10 @@ export default function SessionReview() {
                                 : "border-gray-200 bg-gray-50"
                             }
                           `}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span
-                              className={`
+                            >
+                              <div className="flex items-center justify-between">
+                                <span
+                                  className={`
                               font-medium
                               ${
                                 isCorrectOption
@@ -283,26 +285,81 @@ export default function SessionReview() {
                                   : "text-gray-700"
                               }
                             `}
+                                >
+                                  {opt}
+                                  {isSelected &&
+                                    !isCorrectOption &&
+                                    " (Your Answer)"}
+                                </span>
+                                {isCorrectOption && (
+                                  <CheckCircle2
+                                    className="text-emerald-600"
+                                    size={22}
+                                  />
+                                )}
+                                {isSelected && !isCorrect && (
+                                  <XCircle className="text-red-600" size={22} />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {question.optionsWithImgs.map((optWImg, i) => {
+                          const opt = optWImg.option;
+                          const isCorrectOption = opt === correctAnswerText;
+                          const isSelected = opt === submittedValue;
+
+                          return (
+                            <div
+                              key={i}
+                              className={`
+                            p-4 rounded-xl border-2 transition-all
+                            ${
+                              isCorrectOption
+                                ? "border-emerald-500 bg-emerald-50"
+                                : isSelected && !isCorrect
+                                ? "border-red-500 bg-red-50"
+                                : "border-gray-200 bg-gray-50"
+                            }
+                          `}
                             >
-                              {opt}
-                              {isSelected &&
-                                !isCorrectOption &&
-                                " (Your Answer)"}
-                            </span>
-                            {isCorrectOption && (
-                              <CheckCircle2
-                                className="text-emerald-600"
-                                size={22}
-                              />
-                            )}
-                            {isSelected && !isCorrect && (
-                              <XCircle className="text-red-600" size={22} />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                              <div className="flex items-center justify-between">
+                                <span
+                                  className={`
+                              font-medium
+                              ${
+                                isCorrectOption
+                                  ? "text-emerald-800"
+                                  : isSelected && !isCorrect
+                                  ? "text-red-800"
+                                  : "text-gray-700"
+                              }
+                            `}
+                                >
+                                  {opt}
+                                  {isSelected &&
+                                    !isCorrectOption &&
+                                    " (Your Answer)"}
+                                </span>
+                                {isCorrectOption && (
+                                  <CheckCircle2
+                                    className="text-emerald-600"
+                                    size={22}
+                                  />
+                                )}
+                                {isSelected && !isCorrect && (
+                                  <XCircle className="text-red-600" size={22} />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Feedback Box */}

@@ -270,55 +270,109 @@ export default function ExamResults() {
                         {question.text}
                       </p>
 
-                      {question.type === "mcq" && question.options && (
-                        <div className="space-y-3">
-                          {question.options.map((opt, i) => {
-                            const isCorrectOpt = opt === correctAnswerText;
-                            const isSelected = opt === submittedValue;
+                      {question.type === "mcq" && (
+                        <>
+                          {question.options?.length ? (
+                            <div className="space-y-3">
+                              {question.options.map((opt, i) => {
+                                const isCorrectOpt = opt === correctAnswerText;
+                                const isSelected = opt === submittedValue;
 
-                            return (
-                              <div
-                                key={i}
-                                className={`p-5 rounded-2xl border-2 transition-all ${
-                                  isCorrectOpt
-                                    ? "border-emerald-500 bg-emerald-50"
-                                    : isSelected && !isCorrect
-                                    ? "border-rose-500 bg-rose-50"
-                                    : "border-gray-200 bg-gray-50"
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span
-                                    className={`font-medium text-lg ${
+                                return (
+                                  <div
+                                    key={i}
+                                    className={`p-5 rounded-2xl border-2 transition-all ${
                                       isCorrectOpt
-                                        ? "text-emerald-800"
+                                        ? "border-emerald-500 bg-emerald-50"
                                         : isSelected && !isCorrect
-                                        ? "text-rose-800"
-                                        : "text-gray-700"
+                                        ? "border-rose-500 bg-rose-50"
+                                        : "border-gray-200 bg-gray-50"
                                     }`}
                                   >
-                                    {opt}
-                                    {isSelected &&
-                                      !isCorrectOpt &&
-                                      " (Your Answer)"}
-                                  </span>
-                                  {isCorrectOpt && (
-                                    <CheckCircle2
-                                      size={28}
-                                      className="text-emerald-600"
-                                    />
-                                  )}
-                                  {isSelected && !isCorrect && (
-                                    <XCircle
-                                      size={28}
-                                      className="text-rose-600"
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                                    <div className="flex items-center justify-between">
+                                      <span
+                                        className={`font-medium text-lg ${
+                                          isCorrectOpt
+                                            ? "text-emerald-800"
+                                            : isSelected && !isCorrect
+                                            ? "text-rose-800"
+                                            : "text-gray-700"
+                                        }`}
+                                      >
+                                        {opt}
+                                        {isSelected &&
+                                          !isCorrectOpt &&
+                                          " (Your Answer)"}
+                                      </span>
+                                      {isCorrectOpt && (
+                                        <CheckCircle2
+                                          size={28}
+                                          className="text-emerald-600"
+                                        />
+                                      )}
+                                      {isSelected && !isCorrect && (
+                                        <XCircle
+                                          size={28}
+                                          className="text-rose-600"
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              {question.optionsWithImgs.map((optWImg, i) => {
+                                const opt = optWImg.option;
+                                const isCorrectOpt = opt === correctAnswerText;
+                                const isSelected = opt === submittedValue;
+
+                                return (
+                                  <div
+                                    key={i}
+                                    className={`p-5 rounded-2xl border-2 transition-all ${
+                                      isCorrectOpt
+                                        ? "border-emerald-500 bg-emerald-50"
+                                        : isSelected && !isCorrect
+                                        ? "border-rose-500 bg-rose-50"
+                                        : "border-gray-200 bg-gray-50"
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span
+                                        className={`font-medium text-lg ${
+                                          isCorrectOpt
+                                            ? "text-emerald-800"
+                                            : isSelected && !isCorrect
+                                            ? "text-rose-800"
+                                            : "text-gray-700"
+                                        }`}
+                                      >
+                                        {opt}
+                                        {isSelected &&
+                                          !isCorrectOpt &&
+                                          " (Your Answer)"}
+                                      </span>
+                                      {isCorrectOpt && (
+                                        <CheckCircle2
+                                          size={28}
+                                          className="text-emerald-600"
+                                        />
+                                      )}
+                                      {isSelected && !isCorrect && (
+                                        <XCircle
+                                          size={28}
+                                          className="text-rose-600"
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
                       )}
 
                       {question.feedback && (
