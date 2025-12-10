@@ -398,16 +398,34 @@ export default function TakeExam() {
                       })}
                 </>
               ) : (
-                <input
-                  type="number"
-                  value={numericAnswer}
-                  onChange={(e) => {
-                    setNumericAnswer(e.target.value);
-                    handleAnswerSubmit(e.target.value);
-                  }}
-                  placeholder="Enter numeric answer"
-                  className="w-full max-w-md px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none"
-                />
+                <div className="flex gap-2 items-center">
+                  {/* Find previously submitted numeric answer for this question */}
+                  {(() => {
+                    const previousAnswer = answeredQuestions.find(
+                      (a) => a.questionId === currentQuestion.id
+                    );
+
+                    const savedNumericValue =
+                      previousAnswer?.submittedValue || "";
+
+                    return (
+                      <input
+                        type="number"
+                        value={numericAnswer || Number(savedNumericValue)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setNumericAnswer(value);
+                          // Optionally auto-submit on change, or only on blur/submit button
+                          handleAnswerSubmit(value || null); // send null or empty if cleared
+                        }}
+                        placeholder="Enter numeric answer"
+                        className="w-full max-w-md px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none"
+                      />
+                    );
+                  })()}
+
+                  <p className="text-lg font-medium">{currentQuestion.unit}</p>
+                </div>
               )}
             </div>
 
