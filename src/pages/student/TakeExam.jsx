@@ -301,9 +301,9 @@ export default function TakeExam() {
                 >
                   {/* {currentQuestion.text} */}
                 </h2>
-                {currentQuestion?.questionImg && (
+                {/* {currentQuestion?.questionImg && (
                   <img src={currentQuestion?.questionImg} className="w-full" />
-                )}
+                )} */}
               </div>
 
               {/* Bookmark Flag */}
