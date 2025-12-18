@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Plus, Trash2, Upload, Image as ImageIcon } from "lucide-react";
 import Dropzone from "react-dropzone";
 import { mediaAPI } from "../../lib/api";
+import Tiptap from "../TipTap";
 
 export default function QuestionFormModal({
   isOpen,
@@ -38,30 +39,44 @@ export default function QuestionFormModal({
 
   const isShortAnswer = formData.type === "short";
 
-  // Sync initial data when editing or reset on close
+  // Sync initial data when editing
   useEffect(() => {
-    if (initialData && isOpen) {
+    if (isOpen && initialData) {
+      // // Determine if options have images
+      // const hasOptionImages =
+      //   initialData.optionsWithImgs &&
+      //   initialData.optionsWithImgs.some((opt) => opt.img);
+
+      // const optionsData =
+      //   hasOptionImages && initialData.optionsWithImgs
+      //     ? initialData.optionsWithImgs
+      //     : (initialData.options || ["", "", "", ""]).map((opt, idx) => ({
+      //         option: opt || "",
+      //         img: initialData.optionImgs?.[idx] || null, // fallback for old data
+      //       }));
+
+      // // Ensure at least 4 options when editing
+      // while (optionsData.length < 4) {
+      //   optionsData.push({ option: "", img: null });
+      // }
+
       setFormData({
         type: initialData.type || "mcq",
-        categoryId: initialData.categoryId || "",
+        categoryId: initialData.categoryId?.id || initialData.categoryId || "",
         text: initialData.text || "",
         marks: initialData.marks || 1,
         unit: initialData.unit || "",
         difficulty: initialData.difficulty || "medium",
         feedback: initialData.feedback || "",
-        optionsWithImgs: (initialData.options || ["", "", "", ""]).map(
-          (opt, idx) => ({
-            option: opt,
-            img: initialData.optionImgs?.[idx] || null,
-          })
-        ),
-        correctAnswer: initialData.correctAnswer || "",
+        optionsWithImgs: initialData.optionsWithImgs,
+        correctAnswer: initialData.correctAnswer,
         plusT: initialData.plusT || 0,
         minusT: initialData.minusT || 0,
       });
+
       setQuestionImg(initialData.questionImg || "");
     } else if (!isOpen) {
-      // Reset everything when modal closes
+      // Reset on close
       setFormData({
         type: "mcq",
         categoryId: "",
@@ -86,38 +101,17 @@ export default function QuestionFormModal({
     }
   }, [initialData, isOpen]);
 
-  // Keep optionsWithImgs array in sync with length (min 2)
-  useEffect(() => {
-    setFormData((prev) => {
-      const currentLength = prev.optionsWithImgs.length;
-      if (currentLength < 2) {
-        return {
-          ...prev,
-          optionsWithImgs: [
-            ...prev.optionsWithImgs,
-            ...Array.from({ length: 2 - currentLength }, () => ({
-              option: "",
-              img: null,
-            })),
-          ],
-        };
-      }
-      return prev;
-    });
-  }, [formData.optionsWithImgs.length]);
-
   const uploadImage = async (file) => {
     const uploadData = new FormData();
     uploadData.append("file", file);
-
     const res = await mediaAPI.upload(uploadData);
-    return mediaAPI.getById(res.data.fileId);
+    const media = await mediaAPI.getById(res.data.fileId);
+    return media.url || media; // adjust based on your API response
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Final safety check
     if (
       uploadingQuestionImg ||
       Object.values(uploadingOptionImg).some(Boolean)
@@ -126,14 +120,28 @@ export default function QuestionFormModal({
       return;
     }
 
-    onSubmit({
+    const payload = {
       ...formData,
+      categoryId: formData.categoryId,
       questionImg: questionImg || null,
-      optionsWithImgs: formData.optionsWithImgs.map((item) => ({
-        option: item.option,
-        img: item.img || null,
-      })),
-    });
+      // Clean up options for submission
+      optionsWithImgs: isShortAnswer
+        ? undefined
+        : formData.optionsWithImgs
+            .filter((opt) => opt.option.trim() !== "") // remove empty
+            .map((item) => ({
+              option: item.option.trim(),
+              img: item.img || null,
+            })),
+      // For backward compatibility or API expectations
+      options: isShortAnswer
+        ? undefined
+        : formData.optionsWithImgs
+            .filter((opt) => opt.option.trim())
+            .map((item) => item.option.trim()),
+    };
+
+    onSubmit(payload);
   };
 
   const isAnyUploadInProgress =
@@ -190,8 +198,8 @@ export default function QuestionFormModal({
                       categoryId: e.target.value,
                     }))
                   }
-                  className="w-full px-5 py-4 rounded-2xl border border-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all outline-none text-lg"
                   required
+                  className="w-full px-5 py-4 rounded-2xl border border-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all outline-none text-lg"
                 >
                   <option value="">Select Category</option>
                   {categories.map((cat) => (
@@ -208,15 +216,22 @@ export default function QuestionFormModal({
               <label className="block text-sm font-semibold text-gray-700 mb-3">
                 Question Text <span className="text-red-500">*</span>
               </label>
-              <textarea
+              {/* <textarea
                 rows={5}
                 value={formData.text}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, text: e.target.value }))
                 }
+                required
                 className="w-full px-5 py-4 rounded-2xl border border-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all outline-none resize-none text-lg"
                 placeholder="Enter the full question here..."
-                required
+              /> */}
+              <Tiptap
+                questionText={formData.text || initialData?.text}
+                setQuestionText={(content) => {
+                  setFormData((prev) => ({ ...prev, text: content }));
+                  console.log(content);
+                }}
               />
             </div>
 
@@ -229,45 +244,39 @@ export default function QuestionFormModal({
                 onDrop={async (acceptedFiles) => {
                   if (acceptedFiles.length === 0 || uploadingQuestionImg)
                     return;
-
                   setUploadingQuestionImg(true);
                   try {
                     const url = await uploadImage(acceptedFiles[0]);
                     setQuestionImg(url);
                   } catch (err) {
-                    alert("Failed to upload question image. Please try again.");
-                    console.error(err);
+                    console.log(err);
+                    alert("Failed to upload image.");
                   } finally {
                     setUploadingQuestionImg(false);
                   }
                 }}
                 accept={{ "image/*": [] }}
                 multiple={false}
-                disabled={uploadingQuestionImg}
               >
                 {({ getRootProps, getInputProps }) => (
                   <div
                     {...getRootProps()}
-                    className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all relative
-                      ${
-                        uploadingQuestionImg
-                          ? "cursor-not-allowed opacity-70"
-                          : "cursor-pointer"
-                      }
-                      ${
-                        questionImg
-                          ? "border-indigo-300 bg-indigo-50"
-                          : "border-gray-300 hover:border-indigo-400 hover:bg-gray-50"
-                      }
-                    `}
+                    className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
+                      uploadingQuestionImg
+                        ? "cursor-not-allowed opacity-70"
+                        : "cursor-pointer"
+                    } ${
+                      questionImg
+                        ? "border-indigo-300 bg-indigo-50"
+                        : "border-gray-300 hover:border-indigo-400"
+                    }`}
                   >
                     <input {...getInputProps()} />
-
                     {uploadingQuestionImg ? (
                       <div className="space-y-4">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-indigo-600 mx-auto"></div>
                         <p className="text-indigo-700 font-medium">
-                          Uploading question image...
+                          Uploading...
                         </p>
                       </div>
                     ) : questionImg ? (
@@ -292,10 +301,7 @@ export default function QuestionFormModal({
                       <div className="space-y-3">
                         <Upload className="mx-auto text-gray-400" size={48} />
                         <p className="text-gray-600 font-medium">
-                          Drop an image here or click to browse
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Supports JPG, PNG, GIF up to 10MB
+                          Drop an image or click to browse
                         </p>
                       </div>
                     )}
@@ -343,10 +349,7 @@ export default function QuestionFormModal({
                         value={item.option}
                         onChange={(e) => {
                           const newOptions = [...formData.optionsWithImgs];
-                          newOptions[index] = {
-                            ...newOptions[index],
-                            option: e.target.value,
-                          };
+                          newOptions[index].option = e.target.value;
                           setFormData((prev) => ({
                             ...prev,
                             optionsWithImgs: newOptions,
@@ -356,27 +359,23 @@ export default function QuestionFormModal({
                         className="w-full px-5 py-4 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 outline-none text-lg"
                       />
 
-                      {/* Option Image Dropzone */}
                       <Dropzone
                         onDrop={async (files) => {
-                          if (files.length === 0 || uploadingOptionImg[index])
-                            return;
-
+                          if (!files[0] || uploadingOptionImg[index]) return;
                           setUploadingOptionImg((prev) => ({
                             ...prev,
                             [index]: true,
                           }));
                           try {
                             const url = await uploadImage(files[0]);
-                            setFormData((prev) => {
-                              const newOptions = [...prev.optionsWithImgs];
-                              newOptions[index] = {
-                                ...newOptions[index],
-                                img: url,
-                              };
-                              return { ...prev, optionsWithImgs: newOptions };
-                            });
+                            const newOptions = [...formData.optionsWithImgs];
+                            newOptions[index].img = url;
+                            setFormData((prev) => ({
+                              ...prev,
+                              optionsWithImgs: newOptions,
+                            }));
                           } catch (err) {
+                            alert("Upload failed.");
                             console.log(err);
                           } finally {
                             setUploadingOptionImg((prev) => ({
@@ -387,26 +386,21 @@ export default function QuestionFormModal({
                         }}
                         accept={{ "image/*": [] }}
                         multiple={false}
-                        disabled={!!uploadingOptionImg[index]}
                       >
                         {({ getRootProps, getInputProps }) => (
                           <div
                             {...getRootProps()}
-                            className={`border-2 border-dashed rounded-xl p-4 text-center transition relative
-                              ${
-                                uploadingOptionImg[index]
-                                  ? "opacity-70 cursor-not-allowed"
-                                  : "cursor-pointer"
-                              }
-                              ${
-                                item.img
-                                  ? "border-green-400 bg-green-50"
-                                  : "border-gray-300 hover:border-indigo-400"
-                              }
-                            `}
+                            className={`border-2 border-dashed rounded-xl p-4 text-center ${
+                              uploadingOptionImg[index]
+                                ? "opacity-70 cursor-not-allowed"
+                                : "cursor-pointer"
+                            } ${
+                              item.img
+                                ? "border-green-400 bg-green-50"
+                                : "border-gray-300"
+                            }`}
                           >
                             <input {...getInputProps()} />
-
                             {uploadingOptionImg[index] ? (
                               <div className="py-8">
                                 <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-indigo-600 mx-auto mb-3"></div>
@@ -418,7 +412,7 @@ export default function QuestionFormModal({
                               <div className="space-y-3">
                                 <img
                                   src={item.img}
-                                  alt={`Option ${index + 1}`}
+                                  alt="Option"
                                   className="max-h-40 mx-auto rounded-lg shadow"
                                 />
                                 <button
@@ -428,10 +422,7 @@ export default function QuestionFormModal({
                                     const newOptions = [
                                       ...formData.optionsWithImgs,
                                     ];
-                                    newOptions[index] = {
-                                      ...newOptions[index],
-                                      img: null,
-                                    };
+                                    newOptions[index].img = null;
                                     setFormData((prev) => ({
                                       ...prev,
                                       optionsWithImgs: newOptions,
@@ -449,7 +440,7 @@ export default function QuestionFormModal({
                                   size={36}
                                 />
                                 <p className="text-sm text-gray-600">
-                                  Click or drop image for this option
+                                  Add image (optional)
                                 </p>
                               </div>
                             )}
@@ -458,29 +449,24 @@ export default function QuestionFormModal({
                       </Dropzone>
                     </div>
 
-                    <div className="flex flex-col gap-3 items-center">
+                    <div className="flex flex-col gap-4 items-center">
                       <button
                         type="button"
                         onClick={() => {
-                          const removedOption =
-                            formData.optionsWithImgs[index].option;
                           setFormData((prev) => ({
                             ...prev,
                             optionsWithImgs: prev.optionsWithImgs.filter(
                               (_, i) => i !== index
                             ),
                             correctAnswer:
-                              prev.correctAnswer === removedOption
+                              prev.correctAnswer ===
+                              prev.optionsWithImgs[index].option
                                 ? ""
                                 : prev.correctAnswer,
                           }));
-                          setUploadingOptionImg((prev) => {
-                            const { [index]: _, ...rest } = prev;
-                            return rest;
-                          });
                         }}
                         disabled={formData.optionsWithImgs.length <= 2}
-                        className="p-3 text-red-600 hover:bg-red-50 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        className="p-3 text-red-600 hover:bg-red-50 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Trash2 size={22} />
                       </button>
@@ -525,8 +511,8 @@ export default function QuestionFormModal({
                         correctAnswer: e.target.value,
                       }))
                     }
+                    required={isShortAnswer}
                     className="w-full px-5 py-4 rounded-xl border border-gray-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 outline-none text-lg"
-                    required
                   />
                 </div>
                 <div>
@@ -574,7 +560,7 @@ export default function QuestionFormModal({
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, unit: e.target.value }))
                     }
-                    placeholder="e.g., kg, m/s, °C"
+                    placeholder="e.g., kg, m/s"
                     className="w-full px-5 py-4 rounded-xl border border-gray-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 outline-none text-lg"
                   />
                 </div>
@@ -595,7 +581,7 @@ export default function QuestionFormModal({
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      marks: Number(e.target.value) || 1,
+                      marks: parseInt(e.target.value) || 1,
                     }))
                   }
                   className="w-full px-5 py-4 rounded-2xl border border-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 outline-none text-lg"
@@ -625,7 +611,7 @@ export default function QuestionFormModal({
             {/* Feedback */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Explanation / Feedback (Shown after answer)
+                Explanation / Feedback
               </label>
               <textarea
                 rows={4}
@@ -634,27 +620,25 @@ export default function QuestionFormModal({
                   setFormData((prev) => ({ ...prev, feedback: e.target.value }))
                 }
                 className="w-full px-5 py-4 rounded-2xl border border-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 outline-none resize-none text-lg"
-                placeholder="Provide detailed explanation for students..."
+                placeholder="Provide explanation..."
               />
             </div>
 
-            {/* Submit Buttons */}
+            {/* Submit */}
             <div className="flex gap-5 pt-8">
               <button
                 type="submit"
                 disabled={isSubmitting || isAnyUploadInProgress}
-                className={`flex-1 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xl rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1
-                  ${
-                    isSubmitting || isAnyUploadInProgress
-                      ? "opacity-60 cursor-not-allowed"
-                      : ""
-                  }
-                `}
+                className={`flex-1 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xl rounded-2xl shadow-xl transition-all ${
+                  isSubmitting || isAnyUploadInProgress
+                    ? "opacity-60 cursor-not-allowed"
+                    : "hover:shadow-2xl hover:-translate-y-1"
+                }`}
               >
                 {isAnyUploadInProgress
-                  ? "Uploading images, please wait..."
+                  ? "Uploading images..."
                   : isSubmitting
-                  ? "Saving Question..."
+                  ? "Saving..."
                   : initialData
                   ? "Update Question"
                   : "Create Question"}

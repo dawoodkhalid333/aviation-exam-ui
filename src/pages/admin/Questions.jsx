@@ -40,22 +40,37 @@ export default function Questions() {
   const createMutation = useMutation({
     mutationFn: questionsAPI.create,
     onSuccess: () => {
-      queryClient.invalidateQueries(["questions"]);
+      queryClient.invalidateQueries({ queryKey: ["questions"] });
+      toast.success("Question created successfully!");
       handleClose();
+    },
+    onError: (error) => {
+      toast.error(
+        error.response?.data?.message || "Failed to create question."
+      );
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => questionsAPI.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries(["questions"]);
+      queryClient.invalidateQueries({ queryKey: ["questions"] });
+      toast.success("Question updated successfully!");
       handleClose();
+    },
+    onError: (error) => {
+      toast.error(
+        error.response?.data?.message || "Failed to update question."
+      );
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: questionsAPI.delete,
-    onSuccess: () => queryClient.invalidateQueries(["questions"]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["questions"] });
+      toast.success("Question deleted successfully.");
+    },
     onError: (error) => {
       toast.error(
         error.response?.data?.message ||
@@ -64,7 +79,6 @@ export default function Questions() {
     },
   });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const questions = questionsRes?.questions || [];
   const categories = categoriesRes?.categories || [];
 
@@ -96,10 +110,10 @@ export default function Questions() {
     setEditingQuestion(null);
   };
 
-  // const handleEdit = (question) => {
-  //   setEditingQuestion(question);
-  //   setShowModal(true);
-  // };
+  const handleEdit = (question) => {
+    setEditingQuestion(question);
+    setShowModal(true);
+  };
 
   const handleCreateOrUpdate = (payload) => {
     if (editingQuestion) {
@@ -241,9 +255,10 @@ export default function Questions() {
             <div className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1 pr-4">
-                  <p className="text-lg font-semibold text-gray-800 line-clamp-2">
-                    {question.text}
-                  </p>
+                  <div
+                    className="text-lg font-semibold text-gray-800 line-clamp-2"
+                    dangerouslySetInnerHTML={{ __html: question.text }}
+                  />
                   <div className="flex flex-wrap items-center gap-3 mt-3 text-sm">
                     <span
                       className={`px-3 py-1 rounded-full font-medium ${
@@ -266,7 +281,7 @@ export default function Questions() {
                           : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {question.difficulty.toUpperCase()}
+                      {question.difficulty?.toUpperCase() || "N/A"}
                     </span>
                     <div className="flex items-center gap-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold">
                       <Award size={14} />
@@ -279,22 +294,24 @@ export default function Questions() {
               {/* Expandable Details */}
               {expandedQuestion === question.id && (
                 <div className="mt-5 pt-5 border-t border-gray-200 space-y-4">
-                  <p className="text-gray-700 leading-relaxed">
-                    {question.text}
-                  </p>
+                  <p
+                    className="text-gray-700 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: question.text }}
+                  ></p>
                   {question?.questionImg && (
                     <img
                       src={question.questionImg}
-                      className="w-[50%] mx-auto"
+                      alt="Question"
+                      className="w-[50%] mx-auto rounded-lg"
                     />
                   )}
 
                   {question.type === "mcq" && question.options?.length ? (
                     <div className="space-y-2">
                       <p className="font-medium text-gray-700">Options:</p>
-                      {question?.options
-                        ?.filter((op) => op)
-                        ?.map((opt, i) => (
+                      {question.options
+                        .filter((op) => op)
+                        .map((opt, i) => (
                           <div key={i} className="flex items-center gap-3">
                             <span className="font-medium text-gray-500 w-6">
                               {String.fromCharCode(65 + i)}.
@@ -315,11 +332,11 @@ export default function Questions() {
                   ) : (
                     question.type === "mcq" &&
                     question.optionsWithImgs?.length && (
-                      <div className="space-y-2">
+                      <div className="space-y-4">
                         <p className="font-medium text-gray-700">Options:</p>
-                        {question?.optionsWithImgs?.map((opt, i) => (
-                          <>
-                            <div key={i} className="flex items-center gap-3">
+                        {question.optionsWithImgs.map((opt, i) => (
+                          <div key={i}>
+                            <div className="flex items-center gap-3 mb-2">
                               <span className="font-medium text-gray-500 w-6">
                                 {String.fromCharCode(65 + i)}.
                               </span>
@@ -335,8 +352,14 @@ export default function Questions() {
                                   " (Correct)"}
                               </span>
                             </div>
-                            <img src={opt.img} className="w-[40%] mx-auto" />
-                          </>
+                            {opt.img && (
+                              <img
+                                src={opt.img}
+                                alt={`Option ${String.fromCharCode(65 + i)}`}
+                                className="w-[40%] mx-auto rounded-lg"
+                              />
+                            )}
+                          </div>
                         ))}
                       </div>
                     )
@@ -382,12 +405,13 @@ export default function Questions() {
                 </button>
 
                 <div className="flex items-center gap-3">
-                  {/* <button
+                  <button
                     onClick={() => handleEdit(question)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                    className="protated p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                    title="Edit question"
                   >
                     <Edit size={20} />
-                  </button> */}
+                  </button>
                   <button
                     onClick={() => {
                       if (window.confirm("Delete this question permanently?")) {
@@ -395,6 +419,7 @@ export default function Questions() {
                       }
                     }}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                    title="Delete question"
                   >
                     <Trash2 size={20} />
                   </button>

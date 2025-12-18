@@ -295,8 +295,11 @@ export default function TakeExam() {
                 <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
                   Question {currentQuestionIndex + 1}
                 </span>
-                <h2 className="text-xl font-semibold text-gray-900 mt-4">
-                  {currentQuestion.text}
+                <h2
+                  className="text-xl font-semibold text-gray-900 mt-4"
+                  dangerouslySetInnerHTML={{ __html: currentQuestion.text }}
+                >
+                  {/* {currentQuestion.text} */}
                 </h2>
                 {currentQuestion?.questionImg && (
                   <img src={currentQuestion?.questionImg} className="w-full" />

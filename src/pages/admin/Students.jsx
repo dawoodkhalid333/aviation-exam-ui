@@ -3,15 +3,26 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { usersAPI } from "../../lib/api";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
-import { UserPlus, X, Search, Users, Calendar, Mail } from "lucide-react";
+import {
+  UserPlus,
+  X,
+  Search,
+  Users,
+  Calendar,
+  Mail,
+  Edit3,
+  Trash2,
+} from "lucide-react";
 
 export default function Students() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    password: "",
+    password: "", // optional on edit
   });
   const [error, setError] = useState("");
 
@@ -37,6 +48,7 @@ export default function Students() {
     );
   }, [students, searchTerm]);
 
+  // Create mutation
   const createMutation = useMutation({
     mutationFn: () =>
       usersAPI.create({
@@ -47,29 +59,68 @@ export default function Students() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      setShowAddModal(false);
-      setFormData({ name: "", email: "", password: "" });
-      setError("");
+      closeModals();
     },
     onError: (err) => {
       setError(err.response?.data?.message || "Failed to create student");
     },
   });
 
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: () =>
+      usersAPI.update(selectedStudent.id, {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        ...(formData.password && { password: formData.password }), // only send if provided
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      closeModals();
+    },
+    onError: (err) => {
+      setError(err.response?.data?.message || "Failed to update student");
+    },
+  });
+
+  const closeModals = () => {
+    setShowAddModal(false);
+    setShowEditModal(false);
+    setSelectedStudent(null);
+    setFormData({ name: "", email: "", password: "" });
+    setError("");
+  };
+
+  const openEditModal = (student) => {
+    setSelectedStudent(student);
+    setFormData({
+      name: student.name,
+      email: student.email,
+      password: "",
+    });
+    setError("");
+    setShowEditModal(true);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError("");
 
-    if (!formData.name || !formData.email || !formData.password) {
-      setError("All fields are required");
+    if (!formData.name || !formData.email) {
+      setError("Name and email are required");
       return;
     }
-    if (formData.password.length < 6) {
+
+    if (showAddModal && formData.password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
     }
 
-    createMutation.mutate();
+    if (showAddModal) {
+      createMutation.mutate();
+    } else {
+      updateMutation.mutate();
+    }
   };
 
   if (isLoading) {
@@ -110,7 +161,11 @@ export default function Students() {
           </div>
 
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setShowAddModal(true);
+              setFormData({ name: "", email: "", password: "" });
+              setError("");
+            }}
             className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
           >
             <UserPlus size={22} />
@@ -183,12 +238,14 @@ export default function Students() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredStudents.map((student) => (
-            <Link
+            <div
               key={student.id}
-              to={`/admin/students/${student.id}`}
-              className="group block rounded-2xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+              className="rounded-2xl bg-white/70 backdrop-blur-xl border border-white/30 shadow-xl transition-all duration-300"
             >
-              <div className="p-6">
+              <Link
+                to={`/admin/students/${student.id}`}
+                className="block p-6 pb-4 group"
+              >
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg">
                     {student.name.charAt(0).toUpperCase()}
@@ -216,17 +273,31 @@ export default function Students() {
                     View Profile →
                   </span>
                 </div>
+              </Link>
+
+              {/* Edit button in bottom-right corner */}
+              <div className="px-6 pb-6">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditModal(student);
+                  }}
+                  className="cursor-pointer mt-4 flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition"
+                >
+                  <Edit3 size={18} />
+                  Edit Student
+                </button>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
 
-      {/* Add Student Modal */}
-      {showAddModal && (
+      {/* Add / Edit Modal (shared) */}
+      {(showAddModal || showEditModal) && (
         <div
           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-          onClick={() => setShowAddModal(false)}
+          onClick={closeModals}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8"
@@ -235,10 +306,10 @@ export default function Students() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
                 <UserPlus size={28} className="text-blue-600" />
-                Add New Student
+                {showEditModal ? "Edit Student" : "Add New Student"}
               </h2>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={closeModals}
                 className="p-2 hover:bg-gray-100 rounded-lg transition"
               >
                 <X size={22} />
@@ -279,7 +350,13 @@ export default function Students() {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Password <span className="text-red-500">*</span>
+                  Password{" "}
+                  {showAddModal && <span className="text-red-500">*</span>}
+                  {showEditModal && (
+                    <span className="text-gray-500 text-xs font-normal">
+                      {" (leave blank to keep current)"}
+                    </span>
+                  )}
                 </label>
                 <input
                   type="password"
@@ -290,7 +367,11 @@ export default function Students() {
                       password: e.target.value,
                     }))
                   }
-                  placeholder="Minimum 6 characters"
+                  placeholder={
+                    showAddModal
+                      ? "Minimum 6 characters"
+                      : "Enter new password to change"
+                  }
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all outline-none"
                 />
               </div>
@@ -304,18 +385,26 @@ export default function Students() {
               <div className="flex justify-end gap-4 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
-                  disabled={createMutation.isPending}
+                  onClick={closeModals}
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
                   className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={createMutation.isPending}
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
                   className="px-8 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl shadow-lg hover:shadow-xl disabled:opacity-70 transition-all"
                 >
-                  {createMutation.isPending ? "Creating..." : "Create Student"}
+                  {createMutation.isPending || updateMutation.isPending
+                    ? "Saving..."
+                    : showEditModal
+                    ? "Update Student"
+                    : "Create Student"}
                 </button>
               </div>
             </form>

@@ -606,9 +606,10 @@ export default function CreateExam() {
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <p className="font-medium text-gray-800 text-sm line-clamp-2">
-                            {question.text}
-                          </p>
+                          <p
+                            className="font-medium text-gray-800 text-sm line-clamp-2"
+                            dangerouslySetInnerHTML={{ __html: question.text }}
+                          ></p>
                           <div className="flex flex-wrap gap-2 mt-2 text-xs">
                             <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-full">
                               {question.type?.toUpperCase() || "MCQ"}
@@ -686,7 +687,7 @@ export default function CreateExam() {
                       </div>
                       <div className="flex-1">
                         <p className="font-medium text-gray-800">
-                          {question.text.substring(0, 80)}...
+                          {question.text.substring(3, 80)}...
                         </p>
                         <p className="text-xs text-gray-600 mt-1">
                           {question.marks} marks • {catName}
