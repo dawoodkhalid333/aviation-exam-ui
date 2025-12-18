@@ -266,9 +266,10 @@ export default function ExamResults() {
                         </span>
                       </div>
 
-                      <p className="text-xl font-medium text-gray-800 mb-6 leading-relaxed">
-                        {question.text}
-                      </p>
+                      <p
+                        className="text-xl font-medium text-gray-800 mb-6 leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: question.text }}
+                      ></p>
 
                       {question.type === "mcq" && (
                         <>

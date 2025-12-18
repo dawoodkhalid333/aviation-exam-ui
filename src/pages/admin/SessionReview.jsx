@@ -247,9 +247,10 @@ export default function SessionReview() {
                   </div>
                 </div>
 
-                <p className="text-lg text-gray-800 font-medium mb-6 leading-relaxed">
-                  {question.text}
-                </p>
+                <p
+                  className="text-lg text-gray-800 font-medium mb-6 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: question.text }}
+                ></p>
 
                 {question.type === "mcq" && (
                   <>
