@@ -3,6 +3,7 @@ import { X, Plus, Trash2, Upload, Image as ImageIcon } from "lucide-react";
 import Dropzone from "react-dropzone";
 import { mediaAPI } from "../../lib/api";
 import Tiptap from "../TipTap";
+import QuillEditor from "../QuillEditor";
 
 export default function QuestionFormModal({
   isOpen,
@@ -148,6 +149,7 @@ export default function QuestionFormModal({
     uploadingQuestionImg || Object.values(uploadingOptionImg).some(Boolean);
 
   if (!isOpen) return null;
+  console.log(formData.questionText);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
@@ -226,7 +228,14 @@ export default function QuestionFormModal({
                 className="w-full px-5 py-4 rounded-2xl border border-gray-300 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20 transition-all outline-none resize-none text-lg"
                 placeholder="Enter the full question here..."
               /> */}
-              <Tiptap
+              {/* <Tiptap
+                questionText={formData.text || initialData?.text}
+                setQuestionText={(content) => {
+                  setFormData((prev) => ({ ...prev, text: content }));
+                  console.log(content);
+                }}
+              /> */}
+              <QuillEditor
                 questionText={formData.text || initialData?.text}
                 setQuestionText={(content) => {
                   setFormData((prev) => ({ ...prev, text: content }));
@@ -236,7 +245,7 @@ export default function QuestionFormModal({
             </div>
 
             {/* Question Image Upload */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-semibold text-gray-700 mb-3">
                 Question Image (Optional)
               </label>
@@ -308,7 +317,7 @@ export default function QuestionFormModal({
                   </div>
                 )}
               </Dropzone>
-            </div>
+            </div> */}
 
             {/* MCQ Options */}
             {!isShortAnswer && (
