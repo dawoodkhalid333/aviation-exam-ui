@@ -89,6 +89,9 @@ export default function Students() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["students"] });
     },
+    onError: (err) => {
+      setError(err.response?.data?.message || "Failed to delete student");
+    },
   });
 
   const closeModals = () => {
