@@ -13,6 +13,7 @@ import {
   Edit3,
   Trash2,
 } from "lucide-react";
+import toast from "react-hot-toast";
 
 export default function Students() {
   const [showAddModal, setShowAddModal] = useState(false);
@@ -90,7 +91,7 @@ export default function Students() {
       queryClient.invalidateQueries({ queryKey: ["students"] });
     },
     onError: (err) => {
-      setError(err.response?.data?.message || "Failed to delete student");
+      toast(err.response?.data?.message || "Failed to delete student");
     },
   });
 
