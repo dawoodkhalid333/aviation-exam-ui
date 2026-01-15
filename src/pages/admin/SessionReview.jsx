@@ -363,6 +363,30 @@ export default function SessionReview() {
                   </>
                 )}
 
+                {question.type === "short" && (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Your Answer:</p>
+                      <div
+                        className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-gray-800"
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            submittedValue || "<em>No answer submitted</em>",
+                        }}
+                      ></div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">
+                        Correct Answer:
+                      </p>
+                      <div
+                        className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800"
+                        dangerouslySetInnerHTML={{ __html: correctAnswerText }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Feedback Box */}
                 {question.feedback && (
                   <div className="mt-6 p-5 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl">
