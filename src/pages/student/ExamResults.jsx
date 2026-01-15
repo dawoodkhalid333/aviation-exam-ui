@@ -375,6 +375,34 @@ export default function ExamResults() {
                           )}
                         </>
                       )}
+                      {question.type === "short" && (
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">
+                              Your Answer:
+                            </p>
+                            <div
+                              className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-gray-800"
+                              dangerouslySetInnerHTML={{
+                                __html:
+                                  submittedValue ||
+                                  "<em>No answer submitted</em>",
+                              }}
+                            ></div>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">
+                              Correct Answer:
+                            </p>
+                            <div
+                              className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800"
+                              dangerouslySetInnerHTML={{
+                                __html: correctAnswerText,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      )}
 
                       {question.feedback && (
                         <div className="mt-8 p-6 bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200 rounded-2xl">
