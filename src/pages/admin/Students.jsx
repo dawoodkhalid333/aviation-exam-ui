@@ -83,6 +83,14 @@ export default function Students() {
     },
   });
 
+  // Delete Mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id) => usersAPI.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+    },
+  });
+
   const closeModals = () => {
     setShowAddModal(false);
     setShowEditModal(false);
@@ -286,6 +294,24 @@ export default function Students() {
                 >
                   <Edit3 size={18} />
                   Edit Student
+                </button>
+              </div>
+              <div className="px-6 pb-6">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (
+                      window.confirm(
+                        `Are you sure you want to delete student "${student.name}"? This action cannot be undone.`
+                      )
+                    ) {
+                      deleteMutation.mutate(student.id);
+                    }
+                  }}
+                  className="cursor-pointer mt-2 flex items-center gap-2 text-sm text-red-600 hover:text-red-800 font-medium transition"
+                >
+                  <Trash2 size={18} />
+                  Delete Student
                 </button>
               </div>
             </div>
