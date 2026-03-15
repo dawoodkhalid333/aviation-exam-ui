@@ -348,7 +348,7 @@ export default function StudentProfile() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSessions.slice(0, 10).map((session) => {
+                {filteredSessions.slice(0, 1000).map((session) => {
                   const isSubmitted = !!session.submittedAt;
                   const timeLeft = session.remainingTime;
 
